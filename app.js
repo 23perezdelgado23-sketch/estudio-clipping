@@ -1087,6 +1087,7 @@ function vistaAjustes() {
       <div style="margin-top:16px"><button class="btn prim" id="aj-guardar">Guardar ajustes</button></div>
     </div>
     ${window.nube ? nube.tarjeta() : ""}
+    ${window.bloqueo ? bloqueo.tarjeta() : ""}
     <h2>Copias de seguridad</h2>
     <div class="tarjeta" style="max-width:720px">
       <p class="peq" style="margin-top:0">Tus datos están solo ${esc(window.estudio.donde || "en este Mac")}. La app guarda sola una copia diaria (las 15 últimas). Para llevarlos a otro dispositivo, exporta e importa.</p>
@@ -1124,6 +1125,7 @@ function vistaAjustes() {
     }
   };
   window.nube && nube.montar();
+  window.bloqueo && bloqueo.montar();
   if ($("#aj-carpeta")) $("#aj-carpeta").onclick = () => window.estudio.abrirCarpeta();
   $("#aj-borrar").onclick = () => {
     if (!confirm("¿Borrar TODOS los datos? Las copias diarias se quedan en la carpeta de datos.")) return;

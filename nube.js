@@ -160,6 +160,16 @@
   }
 
   window.nube = {
+    correo: () => (configurada && sesion() ? sesion().email : null),
+    // Para el bloqueo con código: comprueba la contraseña de la cuenta sin tocar la sesión guardada
+    async comprobarClave(password) {
+      try {
+        await auth("token?grant_type=password", { email: sesion().email, password });
+        return true;
+      } catch {
+        return false;
+      }
+    },
     // Lo llama guardar() de app.js después de guardar en local
     cambio() {
       ls.set(LS.cambiado, String(Date.now()));

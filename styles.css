@@ -193,3 +193,29 @@ kbd { background: var(--panel2); border: 1px solid var(--borde); border-bottom-w
 .pestanas button:hover { color: var(--texto); }
 .pestanas button.activo { background: var(--rosa); border-color: var(--rosa); color: #fff; font-weight: 600; }
 .guia table td, .guia table th { font-size: 13px; }
+
+/* Bloqueo con código */
+html.bloqueada body > :not(#bloqueo) { visibility: hidden; }
+#bloqueo {
+  position: fixed; inset: 0; z-index: 100; background: var(--fondo);
+  display: grid; place-items: center; overflow-y: auto;
+  padding: calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 20px);
+}
+.bloq-caja { width: min(320px, 100%); text-align: center; display: flex; flex-direction: column; align-items: center; }
+.bloq-icono { width: 64px; height: 64px; margin-bottom: 6px; }
+.bloq-caja h2 { margin: 6px 0 4px; font-size: 20px; }
+.bloq-texto { color: var(--suave); font-size: 13px; margin: 0 0 18px; }
+.bloq-puntos { display: flex; gap: 14px; margin-bottom: 8px; }
+.bloq-puntos span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--suave); transition: background .1s; }
+.bloq-puntos span.lleno { background: var(--rosa); border-color: var(--rosa); }
+.bloq-puntos.mal { animation: bloq-temblor .35s; }
+@keyframes bloq-temblor { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+.bloq-error { color: #ff8a9e; font-size: 13px; min-height: 20px; margin: 4px 0 10px; }
+.bloq-teclado { display: grid; grid-template-columns: repeat(3, 72px); gap: 14px 22px; justify-content: center; }
+.bloq-teclado button {
+  width: 72px; height: 72px; border-radius: 50%; border: 1px solid var(--borde); background: var(--panel2);
+  font-size: 26px; font-weight: 500; cursor: pointer; touch-action: manipulation;
+}
+.bloq-teclado button:active { background: var(--rosa); border-color: var(--rosa); }
+.bloq-pie { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 18px; min-height: 36px; }
+#bloqueo input[type="password"] { width: 100%; margin-bottom: 4px; }
