@@ -7,12 +7,18 @@
 
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
+  // Copia diaria en el propio dispositivo (las 10 últimas). Sin el radar: pesa mucho y se vuelve a leer.
+  // El espacio de una web en el iPhone es limitado (unos 5 MB); así nunca se llena.
   function copiaDiaria(texto) {
     try {
       const hoy = new Date().toISOString().slice(0, 10);
-      if (!localStorage.getItem(COPIA + hoy)) localStorage.setItem(COPIA + hoy, texto);
+      if (!localStorage.getItem(COPIA + hoy)) {
+        const d = JSON.parse(texto);
+        delete d.radar;
+        localStorage.setItem(COPIA + hoy, JSON.stringify(d));
+      }
       const todas = Object.keys(localStorage).filter((k) => k.startsWith(COPIA)).sort();
-      todas.slice(0, Math.max(0, todas.length - 15)).forEach((k) => localStorage.removeItem(k));
+      todas.slice(0, Math.max(0, todas.length - 10)).forEach((k) => localStorage.removeItem(k));
     } catch {}
   }
 

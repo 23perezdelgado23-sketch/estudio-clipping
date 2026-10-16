@@ -75,8 +75,12 @@
   }
 
   async function api(metodo, cuerpo) {
+    return apiTabla("datos", metodo, cuerpo, metodo === "GET" ? "select=contenido,actualizado" : "");
+  }
+
+  async function apiTabla(tabla, metodo, cuerpo, consulta = "") {
     const s = await token();
-    const r = await fetch(`${CFG.url}/rest/v1/datos${metodo === "GET" ? "?select=contenido,actualizado" : ""}`, {
+    const r = await fetch(`${CFG.url}/rest/v1/${tabla}${consulta ? "?" + consulta : ""}`, {
       method: metodo,
       headers: {
         apikey: CFG.clave,
@@ -86,8 +90,34 @@
       },
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     });
-    if (!r.ok) throw new Error(traducir((await r.json().catch(() => ({}))).message || `Error ${r.status}`));
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      const e = new Error(traducir(j.message || `Error ${r.status}`));
+      e.codigo = j.code;
+      throw e;
+    }
     return metodo === "GET" ? r.json() : null;
+  }
+
+  // ---------- Copias en la nube: una al día, se guardan 30 días ----------
+  const sinRadar = (d) => {
+    const c = { ...d };
+    delete c.radar;
+    return c;
+  };
+  const tablaCopiasFalta = (e) => e.codigo === "PGRST205" || e.codigo === "42P01" || /copias/i.test(e.message || "");
+  async function copiaDelDia() {
+    const hoy = hoyISO();
+    if (ls.get("nube:copiaDia") === hoy) return;
+    try {
+      await apiTabla("copias", "POST", { user_id: sesion().id, fecha: hoy, contenido: sinRadar(D) });
+      const limite = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+      await apiTabla("copias", "DELETE", null, `fecha=lt.${limite}`);
+      ls.set("nube:copiaDia", hoy);
+      ls.set("nube:copiasActivas", "1");
+    } catch (e) {
+      if (tablaCopiasFalta(e)) ls.set("nube:copiasActivas", "0");
+    }
   }
 
   function vacio(d) {
@@ -108,6 +138,7 @@
       await api("POST", { user_id: sesion().id, contenido: D, actualizado: cuando });
       ls.set(LS.sincro, cuando);
       ponerEstado(`Sincronizado · ${hora()}`);
+      copiaDelDia();
     })().finally(() => (subiendo = null));
     return subiendo;
   }
@@ -199,8 +230,10 @@
           <p class="peq" id="nube-estado">${esc(estado || "…")}</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn prim" id="nube-ya">Sincronizar ahora</button>
+            <button class="btn" id="nube-copias">Copias en la nube</button>
             <button class="btn" id="nube-salir">Cerrar sesión</button>
           </div>
+          <div id="nube-copias-lista"></div>
         </div>`;
       return `<h2>Sincronización</h2>
         <div class="tarjeta" style="max-width:720px">
@@ -239,6 +272,35 @@
       if ($$("nube-entrar")) $$("nube-entrar").onclick = () => entrarCon("token?grant_type=password");
       if ($$("nube-crear")) $$("nube-crear").onclick = () => entrarCon("signup");
       if ($$("nube-ya")) $$("nube-ya").onclick = () => sincronizar();
+      if ($$("nube-copias"))
+        $$("nube-copias").onclick = async () => {
+          const zona = $$("nube-copias-lista");
+          zona.innerHTML = `<p class="peq">Cargando copias…</p>`;
+          try {
+            const copias = await apiTabla("copias", "GET", null, "select=fecha,creada&order=fecha.desc");
+            zona.innerHTML = copias.length
+              ? `<p class="peq" style="margin-bottom:6px">Una copia al día de tus datos (sin el radar), de los últimos 30 días. Restaurar sustituye tus datos actuales por los de ese día en todos tus dispositivos.</p>${copias
+                  .map((c) => `<div class="fila-num"><span>${new Date(c.fecha + "T12:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</span><button class="btn peq" data-restaurar="${c.fecha}">Restaurar</button></div>`)
+                  .join("")}`
+              : `<p class="peq">Aún no hay copias. Se hace una al día al sincronizar.</p>`;
+            zona.querySelectorAll("[data-restaurar]").forEach(
+              (b) =>
+                (b.onclick = async () => {
+                  const f = b.dataset.restaurar;
+                  if (!confirm(`¿Restaurar tus datos tal como estaban el ${f}? Lo que hayas cambiado después se perderá (antes se guarda una copia de lo actual en este dispositivo).`)) return;
+                  const [c] = await apiTabla("copias", "GET", null, `select=contenido&fecha=eq.${f}`);
+                  ls.set(LS.descartado, JSON.stringify(D));
+                  aplicarDatos({ ...c.contenido, radar: D.radar });
+                  guardar();
+                  aviso(`Datos restaurados al ${f}`);
+                })
+            );
+          } catch (e) {
+            zona.innerHTML = tablaCopiasFalta(e)
+              ? `<div class="tarjeta" style="border-color:var(--ambar)">Las copias en la nube aún no están activadas en tu proyecto de Supabase. Falta crear la tabla «copias» (te lo explico en el chat).</div>`
+              : `<p class="peq">No se han podido cargar: ${esc(e.message)}</p>`;
+          }
+        };
       if ($$("nube-salir"))
         $$("nube-salir").onclick = () => {
           if (!confirm("¿Cerrar sesión? Los datos se quedan en este dispositivo, pero dejarán de sincronizarse.")) return;
