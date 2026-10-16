@@ -106,17 +106,20 @@
     return c;
   };
   const tablaCopiasFalta = (e) => e.codigo === "PGRST205" || e.codigo === "42P01" || /copias/i.test(e.message || "");
-  async function copiaDelDia() {
+  async function copiaDelDia(forzar = false) {
     const hoy = hoyISO();
-    if (ls.get("nube:copiaDia") === hoy) return;
+    if (!forzar && ls.get("nube:copiaDia") === hoy) return true;
     try {
       await apiTabla("copias", "POST", { user_id: sesion().id, fecha: hoy, contenido: sinRadar(D) });
       const limite = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
       await apiTabla("copias", "DELETE", null, `fecha=lt.${limite}`);
       ls.set("nube:copiaDia", hoy);
       ls.set("nube:copiasActivas", "1");
+      return true;
     } catch (e) {
       if (tablaCopiasFalta(e)) ls.set("nube:copiasActivas", "0");
+      else ponerEstado(`No se ha podido hacer la copia del día: ${e.message}`);
+      return e;
     }
   }
 
@@ -185,6 +188,7 @@
         } else usarRemoto(fila);
       } else if (pendiente()) await subir();
       ponerEstado(`Sincronizado · ${hora()}`);
+      copiaDelDia();
     } catch (e) {
       ponerEstado(`No se ha podido sincronizar: ${e.message}`);
     }
@@ -277,7 +281,12 @@
           const zona = $$("nube-copias-lista");
           zona.innerHTML = `<p class="peq">Cargando copias…</p>`;
           try {
-            const copias = await apiTabla("copias", "GET", null, "select=fecha,creada&order=fecha.desc");
+            let copias = await apiTabla("copias", "GET", null, "select=fecha,creada&order=fecha.desc");
+            if (!copias.some((c) => c.fecha === hoyISO())) {
+              const r = await copiaDelDia(true);
+              if (r !== true) throw r;
+              copias = await apiTabla("copias", "GET", null, "select=fecha,creada&order=fecha.desc");
+            }
             zona.innerHTML = copias.length
               ? `<p class="peq" style="margin-bottom:6px">Una copia al día de tus datos (sin el radar), de los últimos 30 días. Restaurar sustituye tus datos actuales por los de ese día en todos tus dispositivos.</p>${copias
                   .map((c) => `<div class="fila-num"><span>${new Date(c.fecha + "T12:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</span><button class="btn peq" data-restaurar="${c.fecha}">Restaurar</button></div>`)
