@@ -189,12 +189,58 @@
       } else if (pendiente()) await subir();
       ponerEstado(`Sincronizado · ${hora()}`);
       copiaDelDia();
+      // Con los datos ya al día, se recoge la última lectura del radar que haya hecho el servidor
+      window.traerRadarServidor && traerRadarServidor();
     } catch (e) {
       ponerEstado(`No se ha podido sincronizar: ${e.message}`);
     }
   }
 
+  // ---------- Servidor 24 h y avisos ----------
+  async function funcion(nombre, cuerpo = {}) {
+    const s = await token();
+    const r = await fetch(`${CFG.url}/functions/v1/${nombre}`, {
+      method: "POST",
+      headers: { apikey: CFG.clave, Authorization: `Bearer ${s.access}`, "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(traducir(j.error || j.message || `Error ${r.status}`));
+    return j;
+  }
+  // Los avisos al móvil solo funcionan en la web instalada (en el iPhone, abierta desde el icono de la pantalla de inicio)
+  const avisosPosibles = () => location.protocol === "https:" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!CFG.avisos;
+  const enIphoneSinInstalar = () => /iphone|ipad/i.test(navigator.userAgent) && !navigator.standalone;
+  const claveAvisos = () => {
+    const b = atob(CFG.avisos.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (CFG.avisos.length % 4)) % 4));
+    return Uint8Array.from(b, (c) => c.charCodeAt(0));
+  };
+  async function suscripcionAvisos() {
+    if (!avisosPosibles()) return null;
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  }
+  async function activarAvisos() {
+    if ((await Notification.requestPermission()) !== "granted") throw new Error("No has dado permiso. Actívalo en Ajustes del iPhone → Notificaciones → Estudio Clipping");
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveAvisos() }));
+    const j = sub.toJSON();
+    await apiTabla("suscripciones_push", "POST", { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, dispositivo: navigator.userAgent.slice(0, 160) });
+    return funcion("radar", { prueba: true });
+  }
+  async function desactivarAvisos() {
+    const sub = await suscripcionAvisos();
+    if (!sub) return;
+    await apiTabla("suscripciones_push", "DELETE", null, `endpoint=eq.${encodeURIComponent(sub.endpoint)}`).catch(() => {});
+    await sub.unsubscribe();
+  }
+
   window.nube = {
+    funcion,
+    async radarServidor() {
+      const [f] = await apiTabla("radar_servidor", "GET", null, "select=contenido&id=eq.1");
+      return f?.contenido || null;
+    },
     correo: () => (configurada && sesion() ? sesion().email : null),
     // Para el bloqueo con código: comprueba la contraseña de la cuenta sin tocar la sesión guardada
     async comprobarClave(password) {
@@ -238,6 +284,19 @@
             <button class="btn" id="nube-salir">Cerrar sesión</button>
           </div>
           <div id="nube-copias-lista"></div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--borde)">
+            <b>Avisos del piloto automático</b>
+            <p class="peq" id="avisos-estado">${
+              avisosPosibles()
+                ? "Comprobando…"
+                : window.estudio.radar
+                  ? "En el Mac los avisos salen mientras la app está abierta. Para recibirlos siempre, actívalos en el iPhone (aquí mismo, en Ajustes)."
+                  : enIphoneSinInstalar()
+                    ? "Para recibir avisos, abre Estudio Clipping desde su icono en la pantalla de inicio (no desde Safari) y vuelve aquí."
+                    : "Este navegador no admite avisos."
+            }</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap" id="avisos-botones"></div>
+          </div>
         </div>`;
       return `<h2>Sincronización</h2>
         <div class="tarjeta" style="max-width:720px">
@@ -276,6 +335,34 @@
       if ($$("nube-entrar")) $$("nube-entrar").onclick = () => entrarCon("token?grant_type=password");
       if ($$("nube-crear")) $$("nube-crear").onclick = () => entrarCon("signup");
       if ($$("nube-ya")) $$("nube-ya").onclick = () => sincronizar();
+      // Avisos: el servidor escribe a este dispositivo cuando el piloto automático cambia algo
+      if ($$("avisos-botones") && avisosPosibles()) {
+        const pintar = async () => {
+          const sub = await suscripcionAvisos().catch(() => null);
+          $$("avisos-estado").textContent = sub
+            ? "Activados en este dispositivo: te escribiré cuando el piloto termine, pause o te proponga campañas (el servidor mira Whop y Vyro cada 3 horas)."
+            : "Recibe un aviso en este dispositivo cuando el piloto automático termine, pause o te proponga campañas, aunque no tengas la app abierta.";
+          $$("avisos-botones").innerHTML = sub
+            ? `<button class="btn" id="avisos-prueba">Enviar aviso de prueba</button><button class="btn" id="avisos-off">Desactivar</button>`
+            : `<button class="btn prim" id="avisos-on">Activar avisos</button>`;
+          const accion = (id, fn, ok) =>
+            $$(id) &&
+            ($$(id).onclick = async () => {
+              $$(id).disabled = true;
+              try {
+                await fn();
+                aviso(ok);
+              } catch (e) {
+                aviso("No se ha podido: " + e.message);
+              }
+              pintar();
+            });
+          accion("avisos-on", activarAvisos, "Avisos activados: te llegará uno de prueba");
+          accion("avisos-prueba", () => funcion("radar", { prueba: true }), "Aviso de prueba enviado");
+          accion("avisos-off", desactivarAvisos, "Avisos desactivados en este dispositivo");
+        };
+        pintar();
+      }
       if ($$("nube-copias"))
         $$("nube-copias").onclick = async () => {
           const zona = $$("nube-copias-lista");

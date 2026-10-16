@@ -420,7 +420,7 @@ function vistaPanel() {
                   return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · <span class="txt-${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>${c.cuentaSug ? ` · ${esc(c.cuentaSug.usuario)}` : ""}</div></div><button class="btn peq" data-informe="${c.id}">Informe</button></div>`;
                 })
                 .join("")
-            : `<div class="vacio-mini">${icono("radar")}<div>${D.radar?.items?.length ? "No hay joyas nuevas para tus cuentas ahora mismo." : "El radar aún no se ha leído (se lee desde la app del Mac)."}</div></div>`
+            : `<div class="vacio-mini">${icono("radar")}<div>${D.radar?.items?.length ? "No hay joyas nuevas para tus cuentas ahora mismo." : "El radar aún no se ha leído (lo lee el servidor cada 3 horas al entrar con tu cuenta)."}</div></div>`
         }
       </div>
     </div>
@@ -1355,7 +1355,7 @@ function vistaAjustes() {
         <button class="btn peligro" id="aj-borrar">Borrar todo</button>
       </div>
     </div>
-    <p class="peq">Estudio Clipping 4.1 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
+    <p class="peq">Estudio Clipping 4.2 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
   $("#aj-guardar").onclick = () => {
     const f = leerForm($("#contenido"));
     const num = (x) => (x === "" ? "" : n(x));
@@ -1431,7 +1431,13 @@ const VISTAS = {
     if (guardados) guardar();
   }
   if (!guardados) guardar();
-  ir(progresoPlan().pct < 100 ? "empieza" : "panel");
+  // Un aviso puede abrir la app en un apartado concreto (por ejemplo «#radar»)
+  const pedido = location.hash.slice(1);
+  ir(SECCIONES.some(([id]) => id === pedido) ? pedido : progresoPlan().pct < 100 ? "empieza" : "panel");
+  window.addEventListener("hashchange", () => {
+    const p = location.hash.slice(1);
+    if (SECCIONES.some(([id]) => id === p)) ir(p);
+  });
   window.nube && nube.iniciar();
   // En el Mac, el radar se lee solo si la última lectura tiene más de 6 horas (y se revisa cada 30 minutos)
   if (window.estudio.radar) {

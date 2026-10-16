@@ -1,6 +1,7 @@
 "use strict";
 // Radar de campañas: las campañas reales de Whop y Vyro (sus listados públicos), puntuadas para tus cuentas.
-// Se actualiza desde la app del Mac (el iPhone no puede leer esos listados) y llega al iPhone con la sincronización.
+// Las lee el servidor 24 h (Supabase, cada 3 horas, aunque el Mac esté apagado) y, si hace falta, el propio Mac.
+// El iPhone no puede leer esos listados directamente: recibe la lectura del servidor o la del Mac.
 
 const RADAR_MAX = 120; // campañas guardadas (todas las del idioma elegido y las mejores del resto)
 const RADAR_HORAS = 6; // el Mac la actualiza solo si la última lectura tiene más de 6 horas
@@ -89,39 +90,35 @@ function evaluar(c) {
   return { ...c, cuentaSug: a, ...r, joya };
 }
 
-// ---------- Actualizar (solo en el Mac) ----------
+// ---------- Actualizar ----------
+// Con sesión iniciada se le pide la lectura al servidor 24 h (sirve en el Mac y en el iPhone).
+// Sin sesión, o si el servidor falla, el Mac lee Whop y Vyro él mismo.
+const servidorRadar = () => !!(window.nube && nube.correo());
+
 async function actualizarRadar(silencioso = false) {
-  if (!window.estudio.radar || radarLeyendo) return;
+  const local = !!window.estudio.radar;
+  if (radarLeyendo) return;
+  if (!local && !servidorRadar()) return aviso("Entra con tu cuenta en Ajustes → Sincronización para actualizar el radar desde aquí");
   radarLeyendo = true;
   const progreso = (t) => {
     const el = document.getElementById("radar-progreso");
     if (el) el.textContent = t;
   };
-  window.estudio.alProgresoRadar && window.estudio.alProgresoRadar(progreso);
+  if (local && window.estudio.alProgresoRadar) window.estudio.alProgresoRadar(progreso);
   if (seccion === "radar") vistaRadar();
   try {
-    const r = await window.estudio.radar();
-    const R = radar();
-    const antes = R.actualizado;
-    R.vistos ||= {};
-    r.items.forEach((c) => (R.vistos[c.id] ||= r.actualizado));
-    // Se guardan todas las del idioma elegido y, del resto, las mejores (para no hacer pesada la sincronización)
-    const evaluados = r.items.map(evaluar).sort((a, b) => b.puntos - a.puntos);
-    const propias = evaluados.filter((c) => c.idioma === idiomaObjetivo());
-    const resto = evaluados.filter((c) => c.idioma !== idiomaObjetivo()).slice(0, Math.max(0, RADAR_MAX - propias.length));
-    R.items = [...propias, ...resto].map(({ cuentaSug, puntos, motivos, joya, ...c }) => c);
-    R.anterior = antes;
-    R.actualizado = r.actualizado;
-    R.errores = r.errores;
-    R.total = r.items.length;
-    // Limpia de «vistos» las que ya no existen
-    const ids = new Set(r.items.map((c) => c.id));
-    Object.keys(R.vistos).forEach((k) => ids.has(k) || delete R.vistos[k]);
-    sincronizarCampanasDesdeRadar(r.items);
-    const cambios = pilotoAutomatico(r.items);
-    guardar();
-    if (cambios.length) aviso(`Piloto automático: ${cambios.length} cambio(s) en tus campañas. Míralos en el Radar.`);
-    else if (!silencioso || r.errores.length) aviso(r.errores.length ? "Radar actualizado con avisos: " + r.errores.join(" · ") : `Radar actualizado: ${r.items.length} campañas`);
+    let r = null;
+    if (servidorRadar()) {
+      progreso("El servidor está leyendo Whop y Vyro (unos 20 segundos)…");
+      try {
+        await nube.funcion("radar", {});
+        r = await nube.radarServidor();
+      } catch (e) {
+        if (!local) throw e;
+      }
+    }
+    if (!r && local) r = await window.estudio.radar();
+    procesarRadar(r, silencioso);
   } catch (e) {
     aviso("No se ha podido actualizar el radar: " + e.message);
   } finally {
@@ -129,6 +126,46 @@ async function actualizarRadar(silencioso = false) {
     pintarMenu();
     if (seccion === "radar") vistaRadar();
   }
+}
+
+// Recoge la última lectura del servidor si es más nueva que la que hay (al abrir la app y tras cada sincronización)
+async function traerRadarServidor() {
+  if (!servidorRadar() || radarLeyendo) return;
+  try {
+    const r = await nube.radarServidor();
+    if (!r?.actualizado || !r.items?.length || (radar().actualizado && r.actualizado <= radar().actualizado)) return;
+    procesarRadar(r, true);
+    pintarMenu();
+    if (seccion === "radar" || seccion === "panel" || seccion === "campanas") ir(seccion);
+  } catch {}
+}
+
+// Guarda una lectura (del servidor o del Mac) y aplica el piloto automático
+function procesarRadar(r, silencioso) {
+  const R = radar();
+  const antes = R.actualizado;
+  R.vistos ||= {};
+  r.items.forEach((c) => (R.vistos[c.id] ||= r.actualizado));
+  // Se guardan todas las del idioma elegido y, del resto, las mejores (para no hacer pesada la sincronización)
+  const evaluados = r.items.map(evaluar).sort((a, b) => b.puntos - a.puntos);
+  const propias = evaluados.filter((c) => c.idioma === idiomaObjetivo());
+  const resto = evaluados.filter((c) => c.idioma !== idiomaObjetivo()).slice(0, Math.max(0, RADAR_MAX - propias.length));
+  R.items = [...propias, ...resto].map(({ cuentaSug, puntos, motivos, joya, ...c }) => c);
+  R.anterior = antes;
+  R.actualizado = r.actualizado;
+  R.errores = r.errores || [];
+  R.total = r.items.length;
+  // Limpia de «vistos» las que ya no existen
+  const ids = new Set(r.items.map((c) => c.id));
+  Object.keys(R.vistos).forEach((k) => ids.has(k) || delete R.vistos[k]);
+  sincronizarCampanasDesdeRadar(r.items);
+  const cambios = pilotoAutomatico(r.items);
+  guardar();
+  if (cambios.length) {
+    aviso(`Piloto automático: ${cambios.length} cambio(s) en tus campañas. Míralos en el Radar.`);
+    // En el Mac, además, aviso del sistema (en el iPhone llega el aviso del servidor)
+    if (window.estudio.radar && "Notification" in window) new Notification("Piloto automático", { body: cambios.slice(0, 3).join("\n") });
+  } else if (!silencioso || R.errores.length) aviso(R.errores.length ? "Radar actualizado con avisos: " + R.errores.join(" · ") : `Radar actualizado: ${r.items.length} campañas`);
 }
 
 // Las campañas que añadiste desde el radar se actualizan solas (presupuesto gastado, fin)
@@ -175,8 +212,9 @@ function anadirDesdeRadar(c) {
 function vistaRadar() {
   const R = radar();
   const esMac = !!window.estudio.radar;
-  acciones(esMac ? [["radar-act", radarLeyendo ? "Leyendo…" : "↻ Actualizar ahora", "prim"]] : []);
-  if (esMac) $("#radar-act").onclick = () => actualizarRadar();
+  const puede = esMac || servidorRadar();
+  acciones(puede ? [["radar-act", radarLeyendo ? "Leyendo…" : "↻ Actualizar ahora", "prim"]] : []);
+  if (puede) $("#radar-act").onclick = () => actualizarRadar();
   const f = radarFiltro;
   const todos = R.items.map(evaluar);
   const nuevo = (c) => R.anterior && R.vistos?.[c.id] && R.vistos[c.id] > R.anterior;
@@ -203,9 +241,9 @@ function vistaRadar() {
 
   const cabecera = R.actualizado
     ? `<p class="peq" style="margin-top:0">Datos reales de los listados públicos de Whop y Vyro · leídos el <b>${new Date(R.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</b>${R.total ? ` · ${R.total} campañas de clipping que pagan en TikTok` : ""}. ${
-        esMac ? "Se actualiza solo cada 6 horas." : "Se actualiza desde la app del Mac."
+        servidorRadar() ? "El servidor lo lee solo cada 3 horas, aunque el Mac esté apagado." : esMac ? "Se actualiza solo cada 6 horas mientras la app está abierta." : "Entra con tu cuenta en Ajustes para que se actualice solo."
       }</p>${R.errores?.length ? `<div class="tarjeta" style="border-color:var(--ambar)">⚠ ${esc(R.errores.join(" · "))}</div>` : ""}`
-    : `<div class="vacio">${esMac ? "Pulsa <b>Actualizar ahora</b> para leer las campañas reales de Whop y Vyro. La primera vez tarda 1–2 minutos (revisa la ficha de cada campaña); después, unos segundos." : "El radar se actualiza desde la app del Mac (el iPhone no puede leer los listados de Whop y Vyro). Ábrela en el Mac con la sincronización activada y aquí aparecerán las campañas."}</div>`;
+    : `<div class="vacio">${puede ? "Pulsa <b>Actualizar ahora</b> para leer las campañas reales de Whop y Vyro." : "Entra con tu cuenta en <b>Ajustes → Sincronización</b>: el servidor lee Whop y Vyro cada 3 horas y aquí aparecerán las campañas."}</div>`;
 
   $("#contenido").innerHTML = `
     ${cabecera}
