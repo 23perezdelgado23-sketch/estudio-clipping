@@ -355,7 +355,7 @@ Reglas: usa solo los datos que te doy; si un dato no está, dilo y no lo invente
           ${datos.momentos
             .map(
               (m, i) => `<div class="tarjeta ia-res" style="margin-top:10px"><div style="display:flex;gap:10px;align-items:flex-start">
-              <span class="radar-p ${m.puntuacion >= 7 ? "alta" : ""}">${m.puntuacion}</span>
+              <span class="radar-p ${m.puntuacion >= 7 ? "alta" : ""}" style="--p:${m.puntuacion * 10}">${m.puntuacion}</span>
               <div style="flex:1;min-width:0"><b>${esc(m.titulo)}</b> <span class="chip cian">${esc(m.inicio)} – ${esc(m.fin)}</span>
               <div class="peq">«${esc(m.frase_inicial)}»</div><div style="margin-top:4px">⚡ ${esc(m.gancho)}</div><div class="peq">${esc(m.por_que_funciona)}</div></div>
               <button class="btn peq prim" data-m="${i}">Crear clip</button></div></div>`

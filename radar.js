@@ -292,7 +292,7 @@ function tarjetasPorCuenta(todos) {
             : top.length
             ? top
                 .map(
-                  (c) => `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · quedan ${fmtNum(c.restante)} $${c.minVistas ? ` · cobra desde ${fmtCorto(c.minVistas)} vistas` : ""}</div></div><a class="btn peq" href="${esc(c.enlace)}" target="_blank">Ver ↗</a></div>`
+                  (c) => `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · quedan ${fmtNum(c.restante)} $${c.minVistas ? ` · cobra desde ${fmtCorto(c.minVistas)} vistas` : ""}</div></div><a class="btn peq" href="${esc(c.enlace)}" target="_blank">Ver ↗</a></div>`
                 )
                 .join("")
             : `<p class="peq">Ahora mismo no hay campañas en ${IDIOMAS[idiomaObjetivo()]} que encajen con este nicho.</p>`
@@ -308,7 +308,7 @@ function tarjetaCampanaRadar(c, esNueva) {
   const riesgo = RIESGO.test(textoCampana(c));
   return `<div class="tarjeta radar-c ${c.joya ? "joya" : ""}">
     <div style="display:flex;gap:12px;align-items:flex-start">
-      <span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" title="Puntuación">${c.puntos}</span>
+      <span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" style="--p:${c.puntos}" title="Puntuación">${c.puntos}</span>
       <div style="flex:1;min-width:0">
         <div class="radar-t">${c.joya ? "💎 " : ""}${esc(c.nombre)}</div>
         ${(() => { const v = veredicto(c); return `<div style="margin-top:4px"><span class="chip ${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span> <span class="peq">${esc(v.motivos[0] || "")}</span></div>`; })()}

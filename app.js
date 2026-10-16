@@ -186,7 +186,17 @@ function contadorMenu(id) {
   return "";
 }
 
+function pintarUsuario() {
+  const correo = (window.nube && nube.correo && nube.correo()) || "";
+  const nombre = (D.ajustes.nombre || "").trim();
+  const av = document.getElementById("avatar");
+  if (av) av.textContent = (nombre || correo || "E").charAt(0).toUpperCase();
+  const t = document.getElementById("usuario-nombre");
+  if (t) t.textContent = nombre || "Mi estudio";
+}
+
 function pintarMenu() {
+  pintarUsuario();
   const visibles = SECCIONES.filter(([id]) => id !== "empieza" || progresoPlan().pct < 100 || seccion === "empieza");
   let grupo = null;
   $("#menu").innerHTML = visibles
@@ -278,6 +288,16 @@ const opciones = (lista, sel, vacio) =>
 // ======================================================
 // PANEL
 // ======================================================
+// Minigráfica de línea para las cifras del inicio
+function chispa(vals, color = "#b24bff") {
+  const max = Math.max(...vals, 0);
+  if (!max) return `<svg class="chispa" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 28 H100" stroke="rgba(255,255,255,.12)" stroke-width="1.5" fill="none" stroke-dasharray="3 3"/></svg>`;
+  const pts = vals.map((v, i) => [(i / (vals.length - 1)) * 100, 28 - (v / max) * 24]);
+  const linea = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+  const id = "g" + Math.random().toString(36).slice(2, 7);
+  return `<svg class="chispa" viewBox="0 0 100 30" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${linea} L100 30 L0 30 Z" fill="url(#${id})"/><path d="${linea}" stroke="${color}" stroke-width="1.8" fill="none" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
 // Lo que toca hacer hoy: cada tarea lleva a su sección
 function tareasHoy() {
   const t = [];
@@ -344,17 +364,34 @@ function vistaPanel() {
   const plan = progresoPlan();
   const sig = plan.pct < 100 ? siguientePaso() : null;
 
+  const nJoyas = (D.radar?.items || []).filter((c) => evaluar(c).joya).length;
+  const nPropuestas = D.campanas.filter((c) => c.estado === "porunirte").length;
+  const nListos = D.clips.filter((c) => c.estado === "listo").length;
+  const gananciaDias = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(ahora);
+    d.setDate(d.getDate() - i);
+    gananciaDias.push(dias[d.toISOString().slice(0, 10)]?.g || 0);
+  }
   $("#contenido").innerHTML = `
-    <div class="saludo"><div><div class="saludo-t">${saludo}${D.ajustes.nombre ? `, ${esc(D.ajustes.nombre)}` : ""}</div>
-      <div class="peq">${ahora.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}${D.radar?.actualizado ? ` · radar leído ${new Date(D.radar.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</div></div></div>
+    <div class="hero">
+      <div class="hero-t">${saludo}${D.ajustes.nombre ? `, ${esc(D.ajustes.nombre)}` : ""}</div>
+      <div class="hero-sub">${ahora.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}${D.radar?.actualizado ? ` · radar leído ${new Date(D.radar.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+      <div class="hero-chips">
+        <button class="hero-chip" data-ir="radar">${icono("joya")} ${nJoyas} joya${nJoyas === 1 ? "" : "s"} en el radar</button>
+        <button class="hero-chip" data-ir="campanas">${icono("campanas")} ${nPropuestas} propuesta${nPropuestas === 1 ? "" : "s"}</button>
+        <button class="hero-chip" data-ir="clips">${icono("clips")} ${nListos} clip${nListos === 1 ? "" : "s"} listo${nListos === 1 ? "" : "s"}</button>
+        <button class="hero-chip" data-ir="asistente">${icono("asistente")} Preguntar a la IA</button>
+      </div>
+    </div>
 
     <div class="rejilla kpis">
-      <div class="kpi kpi-acento"><div class="et">Ganado este mes</div><div class="val">${fmtEur(ganadoMes)}</div>
-        ${objMes ? `<div class="barra"><div style="width:${Math.min(100, (ganadoMes / objMes) * 100)}%"></div></div><div class="nota">Objetivo ${fmtEur(objMes)}</div>` : `<div class="nota">Estimado con tus campañas</div>`}</div>
-      <div class="kpi"><div class="et">Vistas este mes</div><div class="val">${fmtCorto(vistasMes)}</div><div class="nota">${delMes.length} clips publicados</div></div>
-      <div class="kpi"><div class="et">Publicados hoy</div><div class="val">${hoyN}${objDia ? `<span class="val-de"> / ${objDia}</span>` : ""}</div>
-        ${objDia ? `<div class="barra"><div style="width:${Math.min(100, (hoyN / objDia) * 100)}%"></div></div>` : `<div class="nota">Pon un objetivo en Cuentas</div>`}</div>
-      <div class="kpi"><div class="et">Cobrado</div><div class="val">${fmtEur(cobrado)}</div><div class="nota">Pendiente ~${fmtEur(Math.max(0, ganadoTotal - cobrado))}</div></div>
+      <div class="kpi kpi-acento"><div class="kpi-cab"><div class="et">Ganado este mes</div><span class="kpi-ico">${icono("cobros")}</span></div><div class="val">${fmtEur(ganadoMes)}</div>
+        ${objMes ? `<div class="barra"><div style="width:${Math.min(100, (ganadoMes / objMes) * 100)}%"></div></div><div class="nota">Objetivo ${fmtEur(objMes)}</div>` : chispa(gananciaDias)}</div>
+      <div class="kpi"><div class="kpi-cab"><div class="et">Vistas este mes</div><span class="kpi-ico cian">${icono("ojo")}</span></div><div class="val">${fmtCorto(vistasMes)}</div>${chispa(ult.map((d) => d.v), "#2ee6d6")}</div>
+      <div class="kpi"><div class="kpi-cab"><div class="et">Publicados hoy</div><span class="kpi-ico ambar">${icono("clips")}</span></div><div class="val">${hoyN}${objDia ? `<span class="val-de"> / ${objDia}</span>` : ""}</div>
+        ${objDia ? `<div class="barra"><div style="width:${Math.min(100, (hoyN / objDia) * 100)}%"></div></div><div class="nota">${delMes.length} clips este mes</div>` : `<div class="nota">Pon un objetivo en Cuentas</div>`}</div>
+      <div class="kpi"><div class="kpi-cab"><div class="et">Cobrado</div><span class="kpi-ico verde">${icono("numeros")}</span></div><div class="val">${fmtEur(cobrado)}</div><div class="nota">Pendiente ~${fmtEur(Math.max(0, ganadoTotal - cobrado))}</div></div>
     </div>
 
     ${
@@ -380,7 +417,7 @@ function vistaPanel() {
             ? joyas
                 .map((c) => {
                   const v = veredicto(c);
-                  return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · <span class="txt-${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>${c.cuentaSug ? ` · ${esc(c.cuentaSug.usuario)}` : ""}</div></div><button class="btn peq" data-informe="${c.id}">Informe</button></div>`;
+                  return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · <span class="txt-${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>${c.cuentaSug ? ` · ${esc(c.cuentaSug.usuario)}` : ""}</div></div><button class="btn peq" data-informe="${c.id}">Informe</button></div>`;
                 })
                 .join("")
             : `<div class="vacio-mini">${icono("radar")}<div>${D.radar?.items?.length ? "No hay joyas nuevas para tus cuentas ahora mismo." : "El radar aún no se ha leído (se lee desde la app del Mac)."}</div></div>`
@@ -1318,7 +1355,7 @@ function vistaAjustes() {
         <button class="btn peligro" id="aj-borrar">Borrar todo</button>
       </div>
     </div>
-    <p class="peq">Estudio Clipping 4.0 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
+    <p class="peq">Estudio Clipping 4.1 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
   $("#aj-guardar").onclick = () => {
     const f = leerForm($("#contenido"));
     const num = (x) => (x === "" ? "" : n(x));

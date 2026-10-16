@@ -115,3 +115,12 @@ body { height: 100dvh; overscroll-behavior: none; -webkit-tap-highlight-color: t
   .kpi .val { font-size: 21px; }
   .saludo-t { font-size: 18px; }
 }
+@media (max-width: 760px) {
+  #barra-movil { background: rgba(9, 9, 15, 0.86); }
+  #barra-movil button.activo { color: var(--primario-claro); }
+  #barra-movil button.activo .icono { filter: drop-shadow(0 0 8px rgba(139, 92, 255, 0.6)); }
+  .hero { padding: 20px; border-radius: 18px; }
+  .hero-t { font-size: 20px; }
+  .lateral { background: rgba(8, 8, 14, 0.8); }
+}
+@media (max-width: 760px) { .usuario { display: none; } }
