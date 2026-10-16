@@ -145,47 +145,93 @@ function enMes(fecha, ref = new Date()) {
 }
 
 // ---------- Navegación ----------
+// Secciones: [id, grupo, nombre, subtítulo]. El icono sale de ICONOS[id] (iconos.js).
 const SECCIONES = [
-  ["empieza", "➜", "Empieza aquí", "Qué hacer paso a paso: plan de 30 días, rutina diaria y revisión semanal"],
-  ["panel", "◉", "Panel", "Cómo vas hoy y este mes"],
-  ["radar", "◎", "Radar de campañas", "Las campañas reales de Whop y Vyro, puntuadas para tus cuentas: aquí salen las joyas"],
-  ["campanas", "◆", "Campañas", "Las propuestas del piloto y las campañas a las que te has unido: tarifa, presupuesto y reglas"],
-  ["clips", "▶", "Clips", "Del corte al cobro: mueve cada clip según avanza"],
-  ["calendario", "▦", "Calendario", "Qué publica cada cuenta cada día de la semana"],
-  ["numeros", "Σ", "Números", "Vistas y euros por día, qué funciona, proyección y exportar"],
-  ["conseguir", "⤓", "Conseguir vídeos", "Dónde conseguir vídeos con permiso: Whop, Vyro y acuerdos con creadores"],
-  ["asistente", "✨", "Asistente IA", "Pregunta lo que quieras: conoce tus cuentas, tus campañas, tus números y el radar"],
-  ["mesa", "✂", "Mesa de corte", "Abre un vídeo largo y marca los momentos que merecen clip, o deja que la IA los busque en la transcripción"],
-  ["cuentas", "@", "Cuentas", "Tus cuentas de TikTok y cómo rinde cada una"],
-  ["ganchos", "⚡", "Ganchos", "Frases de arranque para los primeros segundos y cuáles te funcionan"],
-  ["calculadora", "€", "Calculadora", "Cuántas vistas necesitas y cuánto puedes ganar"],
-  ["cobros", "✓", "Cobros", "Lo que te han pagado y lo que falta"],
-  ["estrategia", "★", "Estrategia", "Cómo se cobra, las 4 cuentas, qué publicar, horas, cantidad, promoción y herramientas de IA"],
-  ["tiktok", "♪", "TikTok a fondo", "Cómo recomienda TikTok, qué frena un vídeo, búsqueda, publicar bien y TikTok Studio"],
-  ["guia", "?", "Guía", "Todo lo que hay que saber del clipping en TikTok"],
-  ["ajustes", "⚙", "Ajustes", "Tipo de cambio, objetivos y copias de seguridad"],
+  ["panel", "", "Inicio", "Cómo vas hoy y qué toca hacer"],
+  ["empieza", "", "Primeros pasos", "Plan de 30 días, rutina diaria y revisión semanal"],
+  ["radar", "Campañas", "Radar", "Las campañas reales de Whop y Vyro, puntuadas para tus cuentas"],
+  ["campanas", "Campañas", "Mis campañas", "Propuestas y campañas a las que te has unido"],
+  ["clips", "Producción", "Clips", "Del corte al cobro"],
+  ["mesa", "Producción", "Mesa de corte", "Marca los mejores momentos o deja que la IA los encuentre"],
+  ["calendario", "Producción", "Calendario", "Qué publica cada cuenta cada día"],
+  ["ganchos", "Producción", "Ganchos", "Frases de arranque y cuáles te funcionan"],
+  ["numeros", "Resultados", "Números", "Vistas, euros, qué funciona y proyección"],
+  ["cobros", "Resultados", "Cobros", "Lo que te han pagado y lo que falta"],
+  ["calculadora", "Resultados", "Calculadora", "Cuántas vistas necesitas para tu objetivo"],
+  ["asistente", "Inteligencia artificial", "Asistente IA", "Pregunta lo que quieras sobre tus cuentas, campañas y números"],
+  ["estrategia", "Aprender", "Estrategia", "Las 4 cuentas, qué publicar, horas, cantidad y herramientas"],
+  ["tiktok", "Aprender", "TikTok a fondo", "Cómo recomienda TikTok y cómo publicar bien"],
+  ["conseguir", "Aprender", "Conseguir vídeos", "Whop, Vyro y acuerdos con creadores"],
+  ["guia", "Aprender", "Guía", "Lo esencial del clipping y cómo saber si una campaña renta"],
+  ["cuentas", "Configuración", "Cuentas", "Tus cuentas de TikTok y cómo rinde cada una"],
+  ["ajustes", "Configuración", "Ajustes", "Sincronización, seguridad, IA y copias"],
 ];
+// En el iPhone: barra inferior con lo más usado y «Más» para el resto
+const BARRA_MOVIL = ["panel", "radar", "clips", "numeros"];
+
+function contadorMenu(id) {
+  if (id === "clips") {
+    const n = D.clips.filter((c) => c.estado === "listo").length;
+    return n ? `<span class="contador" title="Listos para subir">${n}</span>` : "";
+  }
+  if (id === "radar" && D.radar?.items?.length) {
+    const n = D.radar.items.filter((c) => evaluar(c).joya).length;
+    return n ? `<span class="contador verde" title="Joyas en el radar">${n}</span>` : "";
+  }
+  if (id === "campanas") {
+    const n = D.campanas.filter((c) => c.estado === "porunirte").length;
+    return n ? `<span class="contador cian" title="Propuestas por revisar">${n}</span>` : "";
+  }
+  if (id === "empieza" && progresoPlan().pct < 100) return `<span class="contador cian" title="Progreso del plan">${progresoPlan().pct} %</span>`;
+  return "";
+}
 
 function pintarMenu() {
-  const pendientesListo = D.clips.filter((c) => c.estado === "listo").length;
-  $("#menu").innerHTML = SECCIONES.map(
-    ([id, ico, nombre]) =>
-      `<button data-s="${id}" class="${id === seccion ? "activo" : ""}"><span class="ico">${ico}</span>${nombre}${
-        id === "clips" && pendientesListo
-          ? `<span class="contador" title="Listos para subir">${pendientesListo}</span>`
-          : id === "radar" && D.radar?.items?.length && D.radar.items.filter((c) => evaluar(c).joya).length
-          ? `<span class="contador" style="background:var(--verde);color:#0a0a0d" title="Joyas en el radar">${D.radar.items.filter((c) => evaluar(c).joya).length}</span>`
-          : id === "empieza" && progresoPlan().pct < 100
-          ? `<span class="contador" style="background:var(--cian);color:#0a0a0d" title="Progreso del plan">${progresoPlan().pct} %</span>`
-          : ""
-      }</button>`
-  ).join("");
+  const visibles = SECCIONES.filter(([id]) => id !== "empieza" || progresoPlan().pct < 100 || seccion === "empieza");
+  let grupo = null;
+  $("#menu").innerHTML = visibles
+    .map(([id, g, nombre]) => {
+      const cab = g !== grupo ? `${g ? `<div class="menu-grupo">${g}</div>` : ""}` : "";
+      grupo = g;
+      return `${cab}<button data-s="${id}" class="${id === seccion ? "activo" : ""}">${icono(id)}<span class="menu-t">${nombre}</span>${contadorMenu(id)}</button>`;
+    })
+    .join("");
   $("#menu").querySelectorAll("button").forEach((b) => (b.onclick = () => ir(b.dataset.s)));
+  const barra = document.getElementById("barra-movil");
+  if (barra) {
+    const enBarra = BARRA_MOVIL.includes(seccion);
+    barra.innerHTML =
+      BARRA_MOVIL.map((id) => {
+        const [, , nombre] = SECCIONES.find((x) => x[0] === id);
+        return `<button data-s="${id}" class="${id === seccion ? "activo" : ""}">${icono(id)}<span>${id === "panel" ? "Inicio" : nombre}</span>${contadorMenu(id)}</button>`;
+      }).join("") + `<button data-mas class="${enBarra ? "" : "activo"}">${icono("mas")}<span>Más</span></button>`;
+    barra.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => ir(b.dataset.s)));
+    barra.querySelector("[data-mas]").onclick = abrirMenuMas;
+  }
+}
+
+// Hoja «Más» del iPhone: todas las secciones por grupos
+function abrirMenuMas() {
+  let grupo = null;
+  abrirModal(
+    `<div class="mas-cab" data-sinfoco><b>Todas las secciones</b><button class="btn peq" id="mas-cerrar">Cerrar</button></div>
+    <div class="mas-lista">${SECCIONES.map(([id, g, nombre, sub]) => {
+      const cab = g !== grupo ? `<div class="menu-grupo">${g || "General"}</div>` : "";
+      grupo = g;
+      return `${cab}<button class="mas-item ${id === seccion ? "activo" : ""}" data-ir="${id}">${icono(id)}<span><b>${nombre}</b><small>${sub}</small></span>${contadorMenu(id)}</button>`;
+    }).join("")}</div>`,
+    (caja) => {
+      caja.querySelector("#mas-cerrar").onclick = cerrarModal;
+      caja.querySelectorAll("[data-ir]").forEach((b) => (b.onclick = () => (cerrarModal(), ir(b.dataset.ir))));
+    }
+  );
 }
 
 function ir(s) {
   seccion = s;
   const [, , nombre, sub] = SECCIONES.find((x) => x[0] === s);
+  const ico = document.getElementById("icono-seccion");
+  if (ico) ico.innerHTML = icono(s);
   $("#titulo-seccion").textContent = nombre;
   $("#sub-seccion").textContent = sub;
   $("#acciones-seccion").innerHTML = "";
@@ -232,117 +278,135 @@ const opciones = (lista, sel, vacio) =>
 // ======================================================
 // PANEL
 // ======================================================
+// Lo que toca hacer hoy: cada tarea lleva a su sección
+function tareasHoy() {
+  const t = [];
+  const hoy = hoyISO();
+  const ahora = new Date();
+  const add = (ico, texto, boton, ir, tono = "") => t.push({ ico, texto, boton, ir, tono });
+  if (!D.cuentas.length) add("cuentas", "Crea tus cuentas de TikTok en la app para que el radar te busque campañas.", "Crear cuentas", "estrategia", "cian");
+  const propuestas = D.campanas.filter((c) => c.estado === "porunirte").length;
+  if (propuestas) add("campanas", `Tienes <b>${propuestas}</b> campaña(s) propuesta(s): revisa su informe y únete o descártalas.`, "Revisar", "campanas", "cian");
+  const flojas = D.campanas.filter((k) => k.estado === "activa" && k.radarId && D.radar?.items?.some((x) => x.id === k.radarId && veredicto(x).tipo === "no"));
+  if (flojas.length) add("aviso", `<b>${flojas.map((k) => esc(k.nombre)).join(", ")}</b> ya no renta según sus datos.`, "Ver", "campanas", "rosa");
+  D.campanas
+    .filter((c) => c.estado === "activa")
+    .forEach((c) => {
+      if (n(c.gastadoPct) >= 80) add("aviso", `<b>${esc(c.nombre)}</b> lleva el ${fmtNum(c.gastadoPct)} % del presupuesto gastado.`, "Ver", "campanas", "ambar");
+      if (c.fechaFin && new Date(c.fechaFin) - ahora < 3 * 864e5 && new Date(c.fechaFin) >= new Date(hoy)) add("aviso", `<b>${esc(c.nombre)}</b> termina el ${fechaCorta(c.fechaFin)}.`, "Ver", "campanas", "ambar");
+    });
+  const sinEnviar = D.clips.filter((c) => c.estado === "publicado").length;
+  if (sinEnviar) add("clips", `<b>${sinEnviar}</b> clip(s) publicados sin enviar a su campaña: si no envías el enlace, no cuentan.`, "Enviar", "clips", "rosa");
+  const listos = D.clips.filter((c) => c.estado === "listo").length;
+  if (listos) add("clips", `<b>${listos}</b> clip(s) listos para subir a TikTok.`, "Ver", "calendario");
+  const hace30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const sinApuntar = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado) && (c.fechaPub || "").slice(0, 10) >= hace30 && (c.historial || []).slice(-1)[0]?.f !== hoy).length;
+  if (sinApuntar) add("numeros", `Apunta las vistas de hoy de <b>${sinApuntar}</b> clip(s).`, "Apuntar", "numeros");
+  if (D.campanas.some((c) => c.moneda === "USD") && !n(D.ajustes.usdEur)) add("cobros", "Pon el cambio del dólar en Ajustes para pasar a euros lo que pagan las campañas.", "Ajustes", "ajustes");
+  return t;
+}
+
 function vistaPanel() {
   acciones([["nuevo-clip", "+ Nuevo clip", "prim"]]);
   $("#nuevo-clip").onclick = () => editarClip();
-
   const ahora = new Date();
+  const hoy = hoyISO();
   const publicados = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado));
   const delMes = publicados.filter((c) => enMes(c.fechaPub));
-  const vistasMes = delMes.reduce((s, c) => s + n(c.vistas), 0);
-  const ganadoMes = delMes.reduce((s, c) => s + gananciaClip(c), 0);
+  const dias = typeof ganadoPorDia === "function" ? ganadoPorDia() : {};
+  const desdeMes = hoy.slice(0, 8) + "01";
+  const ganadoMes = Object.entries(dias).filter(([f]) => f >= desdeMes).reduce((s, [, d]) => s + d.g, 0);
+  const vistasMes = Object.entries(dias).filter(([f]) => f >= desdeMes).reduce((s, [, d]) => s + d.v, 0);
   const ganadoTotal = D.clips.reduce((s, c) => s + gananciaClip(c), 0);
   const cobrado = D.cobros.filter((p) => p.estado === "cobrado").reduce((s, p) => s + aEur(p.importe, p.moneda), 0);
-  const hoy = hoyISO();
   const hoyN = publicados.filter((c) => (c.fechaPub || "").slice(0, 10) === hoy).length;
-  const objDia = n(D.ajustes.objetivoDia);
-  const activas = D.campanas.filter((c) => c.estado === "activa");
+  const objDia = n(D.ajustes.objetivoDia) || D.cuentas.reduce((s, a) => s + n(a.objetivoDia), 0);
   const objMes = n(D.ajustes.objetivoMes);
+  const h = ahora.getHours();
+  const saludo = h < 6 ? "Buenas noches" : h < 14 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
 
-  // Vistas de los clips publicados cada día (14 días)
-  const dias = [];
+  // Vistas ganadas cada día (14 días)
+  const ult = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(ahora);
     d.setDate(d.getDate() - i);
     const k = d.toISOString().slice(0, 10);
-    const v = publicados.filter((c) => (c.fechaPub || "").slice(0, 10) === k).reduce((s, c) => s + n(c.vistas), 0);
-    dias.push({ k, v, et: d.getDate() });
+    ult.push({ k, et: d.getDate(), v: dias[k]?.v || 0 });
   }
-  const maxD = Math.max(1, ...dias.map((d) => d.v));
-
-  // Media de vistas por hora de publicación
-  const horas = new Array(24).fill(0).map(() => ({ s: 0, c: 0 }));
-  publicados.forEach((c) => {
-    if (!c.fechaPub || !(c.fechaPub.length > 10)) return;
-    const h = new Date(c.fechaPub).getHours();
-    horas[h].s += n(c.vistas);
-    horas[h].c++;
-  });
-  const medias = horas.map((h) => (h.c ? h.s / h.c : 0));
-  const maxH = Math.max(1, ...medias);
-  const mejorHora = medias.indexOf(Math.max(...medias));
-
+  const maxD = Math.max(1, ...ult.map((d) => d.v));
   const top = [...publicados].sort((a, b) => n(b.vistas) - n(a.vistas)).slice(0, 5);
-  const alertas = [];
-  activas.forEach((c) => {
-    if (n(c.gastadoPct) >= 80) alertas.push(`La campaña <b>${esc(c.nombre)}</b> lleva el ${fmtNum(c.gastadoPct)} % del presupuesto gastado: prioriza sus clips o busca otra.`);
-    if (c.fechaFin && new Date(c.fechaFin) - ahora < 3 * 864e5 && new Date(c.fechaFin) >= new Date(hoy))
-      alertas.push(`La campaña <b>${esc(c.nombre)}</b> termina el ${fechaCorta(c.fechaFin)}.`);
-  });
-  const sinEnviar = D.clips.filter((c) => c.estado === "publicado").length;
-  if (sinEnviar) alertas.push(`Tienes <b>${sinEnviar}</b> clip(s) publicados sin enviar a su campaña. Si no envías el enlace, no cuentan.`);
-  const usdSinCambio = D.campanas.some((c) => c.moneda === "USD") && !n(D.ajustes.usdEur);
-  if (usdSinCambio) alertas.push(`Tienes campañas en dólares y no has puesto el cambio en <b>Ajustes</b>: mientras tanto, la app cuenta 1 $ = 1 €.`);
-  const porUnirte = D.campanas.filter((c) => c.estado === "porunirte");
-  if (porUnirte.length) alertas.push(`Tienes <b>${porUnirte.length}</b> campaña(s) <b>por unirte</b> (las ha añadido el piloto o la IA): únete en su plataforma y cámbialas a Activa.`);
-  const flojas = D.campanas.filter((k) => k.estado === "activa" && k.radarId && D.radar?.items?.some((x) => x.id === k.radarId && veredicto(x).tipo === "no"));
-  if (flojas.length) alertas.push(`Según sus datos, <b>${flojas.map((k) => esc(k.nombre)).join(", ")}</b> ya no renta: mira su informe en Campañas.`);
-  const hace30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-  const sinApuntar = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado) && (c.fechaPub || "").slice(0, 10) >= hace30 && (c.historial || []).slice(-1)[0]?.f !== hoy).length;
-  if (sinApuntar) alertas.push(`Apunta las vistas de hoy de <b>${sinApuntar}</b> clip(s) en <b>Números → Actualizar vistas</b> (así sabes lo que ganas cada día).`);
-  const joyas = (D.radar?.items || []).map(evaluar).filter((c) => c.joya && !D.campanas.some((k) => k.radarId === c.id));
-  if (joyas.length) alertas.push(`Hay <b>${joyas.length}</b> joya(s) en el <b>Radar de campañas</b> que aún no tienes en Campañas.`);
-  const listos = D.clips.filter((c) => c.estado === "listo").length;
-  if (listos) alertas.push(`Tienes <b>${listos}</b> clip(s) listos para subir a TikTok.`);
+  const joyas = (D.radar?.items || [])
+    .map(evaluar)
+    .filter((c) => c.joya && !D.campanas.some((k) => k.radarId === c.id))
+    .sort((a, b) => b.puntos - a.puntos)
+    .slice(0, 3);
+  const tareas = tareasHoy();
+  const plan = progresoPlan();
+  const sig = plan.pct < 100 ? siguientePaso() : null;
 
   $("#contenido").innerHTML = `
-    ${D.ajustes.nombre ? `<p class="peq" style="margin-top:0">Hola, ${esc(D.ajustes.nombre)}.</p>` : ""}
+    <div class="saludo"><div><div class="saludo-t">${saludo}${D.ajustes.nombre ? `, ${esc(D.ajustes.nombre)}` : ""}</div>
+      <div class="peq">${ahora.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}${D.radar?.actualizado ? ` · radar leído ${new Date(D.radar.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</div></div></div>
+
     <div class="rejilla kpis">
-      <div class="kpi"><div class="et">Publicados hoy</div><div class="val">${hoyN}${objDia ? ` <span class="peq">/ ${objDia}</span>` : ""}</div>
-        ${objDia ? `<div class="barra" style="margin-top:8px"><div style="width:${Math.min(100, (hoyN / objDia) * 100)}%"></div></div>` : '<div class="nota">Pon tu objetivo diario en Ajustes</div>'}</div>
+      <div class="kpi kpi-acento"><div class="et">Ganado este mes</div><div class="val">${fmtEur(ganadoMes)}</div>
+        ${objMes ? `<div class="barra"><div style="width:${Math.min(100, (ganadoMes / objMes) * 100)}%"></div></div><div class="nota">Objetivo ${fmtEur(objMes)}</div>` : `<div class="nota">Estimado con tus campañas</div>`}</div>
       <div class="kpi"><div class="et">Vistas este mes</div><div class="val">${fmtCorto(vistasMes)}</div><div class="nota">${delMes.length} clips publicados</div></div>
-      <div class="kpi"><div class="et">Estimado este mes</div><div class="val">${fmtEur(ganadoMes)}</div>
-        ${objMes ? `<div class="barra" style="margin-top:8px"><div style="width:${Math.min(100, (ganadoMes / objMes) * 100)}%"></div></div><div class="nota">Objetivo ${fmtEur(objMes)}</div>` : '<div class="nota">Estimado con las tarifas de tus campañas</div>'}</div>
-      <div class="kpi"><div class="et">Cobrado</div><div class="val">${fmtEur(cobrado)}</div><div class="nota">Pendiente estimado: ${fmtEur(Math.max(0, ganadoTotal - cobrado))}</div></div>
-      <div class="kpi"><div class="et">Campañas activas</div><div class="val">${activas.length}</div><div class="nota">${D.cuentas.length} cuentas de TikTok</div></div>
+      <div class="kpi"><div class="et">Publicados hoy</div><div class="val">${hoyN}${objDia ? `<span class="val-de"> / ${objDia}</span>` : ""}</div>
+        ${objDia ? `<div class="barra"><div style="width:${Math.min(100, (hoyN / objDia) * 100)}%"></div></div>` : `<div class="nota">Pon un objetivo en Cuentas</div>`}</div>
+      <div class="kpi"><div class="et">Cobrado</div><div class="val">${fmtEur(cobrado)}</div><div class="nota">Pendiente ~${fmtEur(Math.max(0, ganadoTotal - cobrado))}</div></div>
     </div>
 
-    ${(() => {
-      const sig = siguientePaso();
-      const r = rutinaHoy();
-      const hechos = RUTINA.filter(([id]) => r.hechos[id]).length;
-      return `<div class="rejilla dos" style="margin-top:14px">
-        <div class="tarjeta" style="cursor:pointer" id="ir-plan"><div class="peq">PLAN DE 30 DÍAS · ${progresoPlan().pct} %</div><div style="margin-top:6px">${sig ? `<b>Siguiente paso:</b> ${esc(sig.texto)}` : "<b>Plan completado.</b> Sigue con la rutina diaria."}</div></div>
-        <div class="tarjeta" style="cursor:pointer" id="ir-rutina"><div class="peq">RUTINA DE HOY · ${hechos}/${RUTINA.length}</div><div class="barra" style="margin-top:10px"><div style="width:${(hechos / RUTINA.length) * 100}%"></div></div></div>
-      </div>`;
-    })()}
-    ${alertas.length ? `<h2>Qué hacer hoy</h2><div class="tarjeta">${alertas.map((a) => `<div style="padding:4px 0">• ${a}</div>`).join("")}</div>` : ""}
-
-    <div class="rejilla dos" style="margin-top:14px">
-      <div class="tarjeta">
-        <h3 style="margin-top:0">Vistas de lo publicado cada día · 14 días</h3>
-        <div class="barras">${dias.map((d) => `<div class="b" style="height:${(d.v / maxD) * 100}%" data-t="${fmtNum(d.v)} vistas"></div>`).join("")}</div>
-        <div class="ejes">${dias.map((d) => `<span>${d.et}</span>`).join("")}</div>
-      </div>
-      <div class="tarjeta">
-        <h3 style="margin-top:0">Media de vistas según la hora de publicación</h3>
-        <div class="barras">${medias.map((m, h) => `<div class="b" style="height:${(m / maxH) * 100}%" data-t="${h}:00 · ${fmtNum(m)} de media"></div>`).join("")}</div>
-        <div class="ejes">${medias.map((_, h) => `<span>${h % 3 === 0 ? h : ""}</span>`).join("")}</div>
-        <p class="peq">${publicados.some((c) => (c.fechaPub || "").length > 10) ? `Tu mejor hora hasta ahora: <b>${mejorHora}:00</b>. Con pocos clips es solo una pista: necesitas volumen para fiarte.` : "Cuando publiques clips con fecha y hora, aquí verás a qué hora te funcionan mejor."}</p>
-      </div>
-    </div>
-
-    <h2>Tus mejores clips</h2>
     ${
-      top.length
-        ? `<table><thead><tr><th>Clip</th><th>Campaña</th><th>Cuenta</th><th class="num">Vistas</th><th class="num">Estimado</th></tr></thead><tbody>
-        ${top.map((c) => `<tr data-id="${c.id}" style="cursor:pointer"><td>${esc(c.titulo)}</td><td>${esc(campana(c.campanaId)?.nombre || "—")}</td><td>${esc(cuenta(c.cuentaId)?.usuario || "—")}</td><td class="num">${fmtNum(c.vistas)}</td><td class="num">${fmtEur(gananciaClip(c))}</td></tr>`).join("")}
-        </tbody></table>`
-        : `<div class="vacio">Aún no hay clips publicados. Empieza por <b>Campañas</b> (únete a una y apúntala) y después crea tu primer clip.</div>`
-    }`;
-  $("#contenido").querySelectorAll("tr[data-id]").forEach((tr) => (tr.onclick = () => editarClip(D.clips.find((c) => c.id === tr.dataset.id))));
-  $("#ir-plan").onclick = () => ((tabArranque = "plan"), ir("empieza"));
-  $("#ir-rutina").onclick = () => ((tabArranque = "rutina"), ir("empieza"));
+      sig
+        ? `<div class="tarjeta plan-mini" id="ir-plan"><div class="plan-mini-t">${icono("empieza")}<div><div class="peq">PRIMEROS PASOS · ${plan.pct} %</div><div><b>Siguiente:</b> ${esc(sig.texto)}</div></div></div>
+        <div class="barra" style="margin-top:12px"><div style="width:${plan.pct}%"></div></div></div>`
+        : ""
+    }
+
+    <div class="rejilla dos" style="margin-top:16px">
+      <div class="tarjeta">
+        <div class="tarjeta-cab"><h3>Qué hacer hoy</h3><span class="peq">${tareas.length ? tareas.length + " pendiente(s)" : ""}</span></div>
+        ${
+          tareas.length
+            ? tareas.map((x) => `<div class="tarea ${x.tono}"><span class="tarea-ico">${icono(x.ico)}</span><div class="tarea-t">${x.texto}</div><button class="btn peq" data-ir="${x.ir}">${x.boton}</button></div>`).join("")
+            : `<div class="vacio-mini">${icono("ojo")}<div>Todo al día. Buen momento para cortar clips.</div></div>`
+        }
+      </div>
+      <div class="tarjeta">
+        <div class="tarjeta-cab"><h3>Mejores campañas para ti</h3><button class="btn peq" data-ir="radar">Radar</button></div>
+        ${
+          joyas.length
+            ? joyas
+                .map((c) => {
+                  const v = veredicto(c);
+                  return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · <span class="txt-${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>${c.cuentaSug ? ` · ${esc(c.cuentaSug.usuario)}` : ""}</div></div><button class="btn peq" data-informe="${c.id}">Informe</button></div>`;
+                })
+                .join("")
+            : `<div class="vacio-mini">${icono("radar")}<div>${D.radar?.items?.length ? "No hay joyas nuevas para tus cuentas ahora mismo." : "El radar aún no se ha leído (se lee desde la app del Mac)."}</div></div>`
+        }
+      </div>
+    </div>
+
+    <div class="rejilla dos" style="margin-top:16px">
+      <div class="tarjeta">
+        <div class="tarjeta-cab"><h3>Vistas ganadas · 14 días</h3><span class="peq">${fmtCorto(ult.reduce((s, d) => s + d.v, 0))}</span></div>
+        <div class="barras">${ult.map((d) => `<div class="b" style="height:${(d.v / maxD) * 100}%" data-t="${fechaCorta(d.k)} · ${fmtNum(d.v)} vistas"></div>`).join("")}</div>
+        <div class="ejes">${ult.map((d, i) => `<span>${i % 2 === 0 ? d.et : ""}</span>`).join("")}</div>
+      </div>
+      <div class="tarjeta">
+        <div class="tarjeta-cab"><h3>Tus mejores clips</h3><button class="btn peq" data-ir="numeros">Números</button></div>
+        ${
+          top.length
+            ? top.map((c) => `<div class="fila-clip" data-id="${c.id}"><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.titulo)}</div><div class="peq">${esc(cuenta(c.cuentaId)?.usuario || "—")} · ${esc(campana(c.campanaId)?.nombre || "sin campaña")}</div></div><div class="fila-clip-n"><b>${fmtCorto(c.vistas)}</b><span class="peq">${fmtEur(gananciaClip(c))}</span></div></div>`).join("")
+            : `<div class="vacio-mini">${icono("clips")}<div>Cuando publiques clips y apuntes sus vistas, aquí verás los que mejor funcionan.</div></div>`
+        }
+      </div>
+    </div>`;
+  $("#contenido").querySelectorAll("[data-ir]").forEach((b) => (b.onclick = () => ir(b.dataset.ir)));
+  $("#contenido").querySelectorAll("[data-informe]").forEach((b) => (b.onclick = () => abrirInforme(b.dataset.informe)));
+  $("#contenido").querySelectorAll(".fila-clip").forEach((el) => (el.onclick = () => editarClip(D.clips.find((c) => c.id === el.dataset.id))));
+  $("#ir-plan") && ($("#ir-plan").onclick = () => ((tabArranque = "plan"), ir("empieza")));
 }
 
 // ======================================================
@@ -1227,6 +1291,7 @@ function vistaGuia() {
 function vistaAjustes() {
   const a = D.ajustes;
   $("#contenido").innerHTML = `
+    <h2 style="margin-top:0">General</h2>
     <div class="tarjeta" style="max-width:720px">
       <p class="peq" style="margin-top:0">Todo es opcional. Lo que dejes vacío, la app no lo usa.</p>
       <div class="form">
@@ -1253,7 +1318,7 @@ function vistaAjustes() {
         <button class="btn peligro" id="aj-borrar">Borrar todo</button>
       </div>
     </div>
-    <p class="peq">Estudio Clipping 3.1 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
+    <p class="peq">Estudio Clipping 4.0 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
   $("#aj-guardar").onclick = () => {
     const f = leerForm($("#contenido"));
     const num = (x) => (x === "" ? "" : n(x));

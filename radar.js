@@ -203,7 +203,7 @@ function vistaRadar() {
 
   const cabecera = R.actualizado
     ? `<p class="peq" style="margin-top:0">Datos reales de los listados públicos de Whop y Vyro · leídos el <b>${new Date(R.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</b>${R.total ? ` · ${R.total} campañas de clipping que pagan en TikTok` : ""}. ${
-        esMac ? "Se actualiza solo cada 6 horas mientras la app del Mac está abierta." : "Se actualiza desde la app del Mac y llega aquí con la sincronización."
+        esMac ? "Se actualiza solo cada 6 horas." : "Se actualiza desde la app del Mac."
       }</p>${R.errores?.length ? `<div class="tarjeta" style="border-color:var(--ambar)">⚠ ${esc(R.errores.join(" · "))}</div>` : ""}`
     : `<div class="vacio">${esMac ? "Pulsa <b>Actualizar ahora</b> para leer las campañas reales de Whop y Vyro. La primera vez tarda 1–2 minutos (revisa la ficha de cada campaña); después, unos segundos." : "El radar se actualiza desde la app del Mac (el iPhone no puede leer los listados de Whop y Vyro). Ábrela en el Mac con la sincronización activada y aquí aparecerán las campañas."}</div>`;
 
@@ -246,9 +246,9 @@ function vistaRadar() {
     <p class="peq">${lista.length} campañas${R.items.length < (R.total || 0) ? ` (se guardan todas las de tu idioma y las ${RADAR_MAX} mejores del resto)` : ""}.</p>
     <div class="radar-lista">${lista.slice(0, 80).map((c) => tarjetaCampanaRadar(c, nuevo(c))).join("")}</div>
     ${lista.length > 80 ? `<p class="peq">Mostrando las 80 primeras. Usa los filtros para afinar.</p>` : ""}
-    <h2>Cómo se puntúa</h2>
+    <details class="plegable"><summary>Cómo se puntúa y de dónde sale cada dato</summary>
     <div class="tarjeta peq">De 0 a 100, solo con datos de la campaña: idioma que eliges en Ajustes (30), tarifa en TikTok (hasta 20 a partir de 3 $/1.000), presupuesto que queda por cada clipper (15), vistas mínimas para cobrar (10), días que le quedan (10), sin solicitud (5) y si encaja con el nicho de una de tus cuentas (10). Las bloqueadas restan 20. <b>Joya</b> = 65 puntos o más, en tu idioma, que encaja con el nicho de alguna de tus cuentas, con 200 $ o más por gastar y sin apuestas ni cripto.<br><br>
-    <b>De dónde sale cada dato:</b> tarifa, presupuesto, clippers, mínimo y máximo por clip y solicitud son los que publica cada plataforma. En Vyro, el idioma y la fecha de fin también son oficiales. En Whop el idioma se <b>detecta por el texto</b> de la campaña y la fecha de fin es una <b>estimación</b> según lo rápido que gasta su presupuesto. Las reglas completas (duración, país del público, menciones) solo se ven dentro de cada campaña: léelas antes de unirte.</div>`
+    <b>De dónde sale cada dato:</b> tarifa, presupuesto, clippers, mínimo y máximo por clip y solicitud son los que publica cada plataforma. En Vyro, el idioma y la fecha de fin también son oficiales. En Whop el idioma se <b>detecta por el texto</b> de la campaña y la fecha de fin es una <b>estimación</b> según lo rápido que gasta su presupuesto. Las reglas completas (duración, país del público, menciones) solo se ven dentro de cada campaña: léelas antes de unirte.</div></details>`
         : ""
     }`;
   if (!R.items.length) return;
