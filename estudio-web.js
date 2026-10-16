@@ -60,6 +60,23 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       return true;
     },
+    guardarArchivo: async (nombre, texto) => {
+      const archivo = new File([texto], nombre, { type: "text/csv" });
+      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        try {
+          await navigator.share({ files: [archivo], title: nombre });
+          return true;
+        } catch (e) {
+          if (e.name === "AbortError") return false;
+        }
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(archivo);
+      a.download = nombre;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      return true;
+    },
     importar: async () => {
       const f = await elegirArchivo("application/json,.json");
       return f ? JSON.parse(await f.text()) : null;

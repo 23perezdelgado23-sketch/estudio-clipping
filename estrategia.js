@@ -4,97 +4,88 @@
 // «oficial» = condiciones o ayuda de la propia plataforma; «estudio» = estudio con datos;
 // «sector» = webs de empresas del sector (orientativo); «sin confirmar» = no se pudo verificar.
 
+// Los 4 nichos salen del estudio de las campañas reales de Whop y Vyro (Radar, 15–16/10/2026), en español.
+// «Vistas por clip aprobado» = vistas totales de la campaña ÷ clips aprobados (media; los clips que explotan la suben).
 const NICHOS_RECOMENDADOS = [
   {
     id: "negocios",
-    nombre: "Pódcast de negocios, dinero y emprendimiento",
+    nombre: "Negocios y emprendimiento (pódcast y eventos)",
     usuario: "@…negocios",
+    claves: "podcast, pódcast, ceo, emprend, negocio, business, network marketing, coaching",
     color: "verde",
     porque:
-      "Es de los nichos que mejor pagan por cada 1.000 vistas y tiene pocos clippers dedicados. Las webs del sector sitúan las campañas de finanzas y trading en 4–6 $ por cada 1.000 vistas, frente a 1–3 $ de una campaña normal.",
+      "Es el nicho en español que mejor paga y con menos competencia: las dos campañas tienen 6 y 7 clippers. Cada clip rinde más que en los demás nichos de pago alto.",
     datos: [
-      ["Competencia", "Baja–media"],
-      ["Facilidad para sacar clips", "Media–alta"],
-      ["Pago", "Alto (finanzas: 4–6 $ por 1.000 vistas según webs del sector; mira siempre la tarifa real)"],
-      ["Riesgo", "Bajo, si no haces tú recomendaciones de inversión"],
+      ["Campañas en español (16/10)", "Víctor Rodríguez (pódcast, CEO de Over Group) y Christian Núñez (evento Next Level)"],
+      ["Tarifa en TikTok", "1,80 $ y 2,50 $ por 1.000 vistas"],
+      ["Clippers trabajando", "7 y 6"],
+      ["Vistas por clip aprobado", "5.518 y 12.351 de media"],
+      ["Para cobrar un clip", "≈5.600 y 10.000 vistas"],
     ],
-    clips: [
-      "Una cifra concreta que sorprende («ganaba 1.200 € y ahora…»)",
-      "Un error caro que cuenta el invitado",
-      "Un consejo práctico que se entiende en 30 segundos",
-      "Una opinión contraria a lo que piensa todo el mundo",
-    ],
-    ganchos: ["Este error le costó 50.000 €", "Nadie te cuenta esto sobre el dinero", "Así empezó con 0 €", "La pregunta que le incomodó"],
-    herramientas: "OpusClip para localizar los momentos en pódcast largos y subtítulos con las cifras resaltadas.",
-    ojo: "Las campañas de cripto pagan aún más (4–9 $ según una web del sector), pero hay más proyectos dudosos: revisa bien quién paga y no prometas ganancias.",
+    clips: ["Una idea de negocio explicada en menos de 60 segundos", "Un error que cuenta el invitado y lo que aprendió", "Una respuesta directa a una pregunta incómoda", "Una opinión que va contra lo que piensa la mayoría"],
+    ganchos: ["Nadie te cuenta esto de montar un negocio", "Este fue su mayor error", "La pregunta que le incomodó"],
+    herramientas: "Víctor Rodríguez pide clips verticales de 30 a 60 segundos con subtítulos (lo dice su campaña). OpusClip ayuda a localizar momentos en episodios largos.",
+    ojo: "Next Level es un evento de network marketing: corta lo que dicen, pero no prometas ganancias en tus textos.",
   },
   {
-    id: "streamers",
-    nombre: "Streamers: directos, Just Chatting e IRL",
-    usuario: "@…directos",
-    color: "rosa",
-    porque:
-      "Es el nicho de volumen: los directos dan cada día momentos espontáneos que se cortan solos. Las webs del sector ponen a los streamers IRL y Just Chatting (sobre todo de Kick) con competencia baja y facilidad muy alta.",
-    datos: [
-      ["Competencia", "Baja (IRL, Kick) – alta (gaming de un juego concreto)"],
-      ["Facilidad para sacar clips", "Muy alta"],
-      ["Pago", "Tarifa normal; se gana por volumen de vistas"],
-      ["Riesgo", "Medio: música de fondo del directo y contenido de terceros"],
-    ],
-    clips: [
-      "Reacciones fuertes en el momento (sorpresa, enfado, risa)",
-      "Situaciones IRL que salen mal o raras",
-      "Discusiones o retos con el chat o con invitados",
-      "Frases que se convierten en meme",
-    ],
-    ganchos: ["No se lo esperaba nadie", "El chat no se lo podía creer", "Esto pasó en directo", "Mira su cara"],
-    herramientas: "CapCut para cortes rápidos y zoom en las reacciones, con subtítulos automáticos. OpusClip si el directo dura horas.",
-    ojo: "Si en el directo suena música con derechos, quítala o bájala. En reacciones a vídeos de otros, corta el comentario del streamer, no el vídeo al que reacciona.",
-  },
-  {
-    id: "humor",
-    nombre: "Humor: pódcast y programas de comedia",
-    usuario: "@…risas",
-    color: "ambar",
-    porque: "Es el nicho con más potencial viral: muy fácil de sacar clips y con mucho recorrido de vistas. Paga una tarifa media, pero un clip que explota compensa.",
-    datos: [
-      ["Competencia", "Media"],
-      ["Facilidad para sacar clips", "Muy alta"],
-      ["Pago", "Medio, con mucho volumen de vistas"],
-      ["Riesgo", "Bajo"],
-    ],
-    clips: [
-      "Un chiste o anécdota completa con su remate",
-      "Momentos en los que el invitado no puede parar de reír",
-      "Historias absurdas contadas en primera persona",
-      "Respuestas rápidas e inesperadas",
-    ],
-    ganchos: ["Espera al final.", "La historia más absurda que he oído", "No pudo aguantarse la risa", "Le preguntaron esto y…"],
-    herramientas: "CapCut o Submagic para subtítulos con estilo. El remate siempre al final del clip para que se vea entero.",
-    ojo: "No cortes el remate. Si el chiste necesita contexto, ponlo en una línea de texto arriba en 5 palabras.",
-  },
-  {
-    id: "historias",
-    nombre: "Entrevistas largas y true crime",
-    usuario: "@…historias",
+    id: "dinero",
+    nombre: "Dinero, trading e inversión",
+    usuario: "@…dinero",
+    claves: "trading, trader, invers, dinero, finanzas, mentalidad, bolsa",
     color: "cian",
     porque:
-      "Las entrevistas tipo «gran conversación» y los pódcast de true crime tienen mucha facilidad para sacar clips y una audiencia algo mayor y fiel, que ve los clips enteros. Encaja con la tendencia «Curiosity Detours» de TikTok para 2026: la gente usa TikTok para buscar y descubrir.",
+      "Es la cuenta para cobrar antes: la campaña de Daniel Curto paga desde 1.000 vistas por clip, lo más bajo que hay en español. Es la que más clips aprueba (370), así que es la campaña más «probada».",
     datos: [
-      ["Competencia", "Media"],
-      ["Facilidad para sacar clips", "Alta"],
-      ["Pago", "Constante; depende del invitado y del tema"],
-      ["Riesgo", "Medio: casos sensibles e imágenes de víctimas reales"],
+      ["Campañas en español (16/10)", "Daniel Curto (trading, inversión, mentalidad, pódcast) y Matías Matti (trader en Dubái, nueva)"],
+      ["Tarifa en TikTok", "1,00 $ y 0,60 $ por 1.000 vistas"],
+      ["Clippers trabajando", "51 y 2"],
+      ["Vistas por clip aprobado", "3.284 de media en Daniel Curto (Matías Matti aún no tiene clips aprobados)"],
+      ["Para cobrar un clip", "≈1.000 y 3.000 vistas"],
     ],
-    clips: [
-      "El giro de una historia («y entonces descubrieron que…»)",
-      "Una revelación personal del invitado",
-      "Un dato que casi nadie conoce",
-      "La pregunta incómoda y su respuesta",
+    clips: ["Una frase sobre dinero o mentalidad que se entiende sola", "Una explicación corta de un concepto (qué es el interés compuesto, por ejemplo)", "Su historia: de dónde empezó y cómo le fue", "Un error típico que señala él"],
+    ganchos: ["Esto es lo que nadie te explica del dinero", "Así empezó", "El error que comete casi todo el mundo"],
+    herramientas: "Subtítulos con las cifras y palabras clave resaltadas. Clips cortos: lo que importa es la frase.",
+    ojo: "No des tú consejos de inversión ni prometas ganancias en la descripción: corta lo que dice el creador y nada más.",
+  },
+  {
+    id: "creadores",
+    nombre: "Creadores hispanos: marca personal y estilo de vida",
+    usuario: "@…creadores",
+    claves: "marca personal, personal brand, lifestyle, estilo de vida, bali, urus, sobreviv, reto, viaj, aventura",
+    color: "rosa",
+    porque:
+      "Es el nicho en español con más vistas y más presupuesto: los clips aprobados de ARZ Urus se acercan a 170.000 vistas de media y Pablo Pérez supera las 21.000. A cambio, piden más vistas para cobrar cada clip.",
+    datos: [
+      ["Campañas en español (16/10)", "ARZ Urus, Pablo Pérez (Sobreviviendo en Bali con 100 €), Carlos Esparraga (nueva, 10.000 $ de presupuesto) y Mario Vincere"],
+      ["Tarifa en TikTok", "0,30 $ (ARZ Urus, Carlos Esparraga) y 1,00 $ (Pablo Pérez, Mario Vincere) por 1.000 vistas"],
+      ["Vistas por clip aprobado", "ARZ Urus 168.586 · Pablo Pérez 21.396 · Mario Vincere 5.877"],
+      ["Para cobrar un clip", "10.000 (Pablo Pérez) a 25.000 vistas (Carlos Esparraga)"],
+      ["Ojo al presupuesto", "ARZ Urus gasta rápido: al ritmo actual, se acaba hacia el 25/10. Pablo Pérez y Carlos Esparraga hay que solicitarlas"],
     ],
-    ganchos: ["Nadie sabía esto de…", "Lo que pasó después nadie lo esperaba", "Esta historia parece inventada, pero es real", "Le preguntaron por qué lo hizo"],
-    herramientas: "OpusClip para localizar los momentos en entrevistas de 1–3 horas. Subtítulos sobrios.",
-    ojo: "En true crime, nada de imágenes violentas ni datos de víctimas: TikTok lo puede retirar y entonces la campaña no lo paga (y en Vyro pueden reclamar lo cobrado).",
+    clips: ["El momento más fuerte de un reto o una aventura", "Una frase suya que resume su forma de ver la vida", "Situaciones reales que salen mal o bien", "El antes y el después de algo que cuenta"],
+    ganchos: ["No te vas a creer cómo terminó esto", "Así vive con 100 €", "Esto le pasó de verdad"],
+    herramientas: "Ritmo rápido: cortes cada pocos segundos, subtítulos grandes y el momento clave al principio.",
+    ojo: "Mario Vincere obliga a entrar en su grupo de WhatsApp y le queda poco presupuesto. Empieza por Pablo Pérez.",
+  },
+  {
+    id: "tendencias",
+    nombre: "Tendencias y música en español (sin cara)",
+    usuario: "@…tendencias",
+    claves: "song, canción, cancion, música, musica, music, sound, trend, tendencia, meme, viral latin, mexican, spanish",
+    color: "ambar",
+    porque:
+      "Es donde más campañas nuevas salen en español: 9 desde agosto, 4 de ellas en octubre. Pagan desde 1.000 vistas y sus clips aprobados tienen entre 11.500 y 480.000 vistas de media. No hay que cortar a un creador: son vídeos o textos con la canción oficial que pide cada campaña.",
+    datos: [
+      ["Campañas en español (16/10)", "Las de Duetti: textos en español con una canción, tendencias mexicanas, vídeos latinos virales…"],
+      ["Tarifa en TikTok", "1,25 $ por 1.000 vistas (máximo 100 $ por clip)"],
+      ["Para cobrar un clip", "≈1.000 vistas"],
+      ["Vistas por clip aprobado", "Entre 11.548 y 483.952 de media, según la campaña"],
+      ["Cómo son", "Campañas cortas (unas 2 semanas) de 1.000 $ cada una: hay que ir saltando de una a otra"],
+    ],
+    clips: ["El texto o el meme que pide la campaña, sobre un vídeo de fondo", "La canción oficial de la campaña, siempre", "Temas cercanos al público de cada campaña (muchas apuntan a México)"],
+    ganchos: ["Tag a quien necesita ver esto", "Si te pasó, ya sabes", "POV:"],
+    herramientas: "CapCut con plantillas de texto; usa siempre el sonido oficial de TikTok que indica la campaña.",
+    ojo: "Muchas están pensadas para público de México: lee en cada una si exige público de un país concreto antes de unirte. Usa vídeos de fondo que se puedan usar (propios o de bancos libres).",
   },
 ];
 
@@ -142,7 +133,7 @@ function vistaEstrategia() {
       let n = 0;
       NICHOS_RECOMENDADOS.forEach((ni) => {
         if (D.cuentas.some((c) => c.nicho === ni.nombre)) return;
-        D.cuentas.push({ id: uid(), red: "TikTok", usuario: ni.usuario, nicho: ni.nombre, estado: "calentando", notas: "Cambia el usuario por el real. " + ni.herramientas });
+        D.cuentas.push({ id: uid(), red: "TikTok", usuario: ni.usuario, nicho: ni.nombre, claves: ni.claves, estado: "calentando", notas: "Cambia el usuario por el real. " + ni.herramientas });
         n++;
       });
       NICHOS_RECOMENDADOS.forEach((ni) =>
@@ -200,31 +191,32 @@ function tabCobro() {
 function tabNichos() {
   return `
   <h2 style="margin-top:6px">Las 4 cuentas: un nicho de clipping cada una</h2>
-  <p>Entre las cuatro cubren lo que necesita un equipo de clipping:</p>
-  <ul>
-    <li>Una que <b>paga mucho por vista</b>: negocios.</li>
-    <li>Dos que <b>dan mucho volumen</b>: streamers y humor.</li>
-    <li>Una con <b>audiencia fiel</b>: entrevistas y true crime.</li>
-    <li>Ninguna toca deporte televisado, música ni películas, que dan problemas de derechos.</li>
-  </ul>
+  <p>Estos 4 nichos salen de un <b>estudio de las campañas reales</b> de Whop y Vyro (leídas con el Radar el 15 y 16/10/2026), no de webs del sector. Criterio: que haya <b>campañas en español</b> con presupuesto y que paguen en TikTok.</p>
+  <table style="margin:10px 0"><thead><tr><th>Lo que salió del estudio</th><th>Dato</th></tr></thead><tbody>
+    <tr><td>Campañas de clipping activas</td><td>Whop: 701 (388 de clipping) · Vyro: 14</td></tr>
+    <tr><td>En español</td><td>Whop: 23 (todas las redes y tipos) · <b>Vyro: ninguna</b> (todas exigen inglés)</td></tr>
+    <tr><td>Nichos con campañas en español</td><td>Negocios y emprendimiento · Dinero y trading · Marca personal y estilo de vida · Tendencias y música</td></tr>
+    <tr><td>Nichos <b>sin</b> campañas en español</td><td>Streamers, humor, true crime y entrevistas (descartados: sin campaña no hay cobro)</td></tr>
+  </tbody></table>
+  ${fuente("listados públicos de Whop (Content Rewards) y Vyro, 15–16/10/2026. Tarifas, presupuestos, clippers, vistas y clips aprobados los publica cada plataforma. Cambian cada día: el Radar te dice lo actual.")}
   ${nota(
-    "<b>Antes de abrir cada cuenta:</b> entra en Whop y en Vyro y comprueba que hay <b>campañas activas de ese nicho</b> y en el idioma en el que vais a publicar (la mayoría son en inglés). Si un nicho no tiene campañas, cámbialo por otro que sí tenga: sin campaña no hay cobro.<br><b>Regla de oro:</b> una cuenta = un nicho, para que TikTok sepa a quién enseñarla.",
+    "<b>Por dónde empezar:</b> abre primero <b>Dinero</b> y <b>Tendencias</b>, que cobran desde unas 1.000 vistas por clip (las primeras vistas llegan antes). Después <b>Negocios</b> (paga más y casi no tiene competencia) y <b>Creadores hispanos</b> (más vistas, pero pide 10.000 o más por clip).<br><b>Regla de oro:</b> una cuenta = un nicho, para que TikTok sepa a quién enseñarla. Mira el <b>Radar</b> antes de unirte a nada: las campañas cambian cada semana.",
     "cian"
   )}
-  <div style="margin:14px 0"><button class="btn prim" id="crear-cuentas">Crear estas 4 cuentas en la app (con sus ganchos)</button></div>
+  <div style="margin:14px 0"><button class="btn prim" id="crear-cuentas">Crear estas 4 cuentas en la app (con sus palabras clave y ganchos)</button></div>
   ${NICHOS_RECOMENDADOS.map(
     (n, i) => `
     <div class="tarjeta" style="margin:16px 0">
       <h3 style="margin-top:0"><span class="chip ${n.color}">Cuenta ${i + 1}</span> ${esc(n.nombre)}</h3>
       <p>${esc(n.porque)}</p>
       <table style="margin:8px 0">${n.datos.map(([k, v]) => `<tr><td style="width:220px" class="peq">${k}</td><td>${esc(v)}</td></tr>`).join("")}</table>
-      <b>Qué momentos cortar</b><ul>${n.clips.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
+      <div class="peq" style="margin-bottom:10px">Datos de las campañas: ${fiab("oficial")} · leídos el 15–16/10/2026</div>
+      <b>Qué momentos cortar</b> <span class="peq">(consejo)</span><ul>${n.clips.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
       <b>Ganchos de ejemplo</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px">${n.ganchos.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}</div>
       <b>Cómo editarlo</b><p style="margin-top:4px">${esc(n.herramientas)}</p>
       <div class="peq"><b>Ojo:</b> ${esc(n.ojo)}</div>
     </div>`
-  ).join("")}
-  ${fuente("clasificación de nichos de clipping de ClipSpeed (2026) y tarifas de AScynd y ClipAffiliates (2026). Son webs del sector: la clasificación es cualitativa y las tarifas cambian cada semana.")}`;
+  ).join("")}`;
 }
 
 function tabPublicar() {
@@ -275,12 +267,12 @@ function tabHoras() {
   <h3>Reparto propuesto para las 4 cuentas</h3>
   <p>No publiques las 4 a la vez desde el mismo móvil. Repártelas dentro de la franja buena:</p>
   <table><thead><tr><th>Cuenta</th><th>Clip 1</th><th>Clip 2</th><th>Extra fin de semana</th></tr></thead><tbody>
-    <tr><td>Negocios</td><td>18:00</td><td>21:00</td><td>Domingo 10:00</td></tr>
-    <tr><td>Streamers</td><td>19:00</td><td>22:00</td><td>Sábado 12:00</td></tr>
-    <tr><td>Humor</td><td>20:00</td><td>22:30</td><td>Domingo 12:30</td></tr>
-    <tr><td>Entrevistas y true crime</td><td>18:30</td><td>21:30</td><td>Domingo 9:30</td></tr>
+    <tr><td>Negocios y emprendimiento</td><td>18:00</td><td>21:00</td><td>Domingo 10:00</td></tr>
+    <tr><td>Dinero, trading e inversión</td><td>19:00</td><td>22:00</td><td>Sábado 12:00</td></tr>
+    <tr><td>Creadores hispanos</td><td>20:00</td><td>22:30</td><td>Domingo 12:30</td></tr>
+    <tr><td>Tendencias y música</td><td>18:30</td><td>21:30</td><td>Domingo 9:30</td></tr>
   </tbody></table>
-  <p class="peq">Es un punto de partida propuesto a partir de los estudios, no un dato. Ajústalo con las estadísticas de cada cuenta.</p>
+  <p class="peq">Es un punto de partida propuesto a partir de los estudios, no un dato. Ajústalo con las estadísticas de cada cuenta. Si una campaña de Tendencias busca público de México, ten en cuenta que allí es 7 u 8 horas antes que en España (según la época del año): su tarde-noche es tu madrugada. Mira en TikTok Studio de dónde es tu público.</p>
   ${fuente("Metricool, estudio TikTok 2026; Buffer, «Best time to post on TikTok in 2026»; Sprout Social y Hootsuite según recopilaciones de 2026.")}`;
 }
 
@@ -345,10 +337,10 @@ function tabIA() {
   ${fuente("OpusClip y ElevenLabs, precios oficiales (15/10/2026); Vizard, Submagic y CapCut según comparativas de Choppity, FrameKit y Less Tools (2026).")}
   <h3>Qué usar en cada cuenta</h3>
   <table><thead><tr><th>Cuenta</th><th>Combinación</th></tr></thead><tbody>
-    <tr><td>Negocios</td><td>OpusClip (pódcast de 1–2 h) + subtítulos con cifras resaltadas + ChatGPT/Claude para la descripción.</td></tr>
-    <tr><td>Streamers</td><td>CapCut (cortes rápidos, zoom en la reacción) + subtítulos automáticos. OpusClip para directos de horas.</td></tr>
-    <tr><td>Humor</td><td>CapCut o Submagic (subtítulos que acompañan el ritmo del chiste).</td></tr>
-    <tr><td>Entrevistas y true crime</td><td>OpusClip para localizar momentos + CapCut para afinar. Subtítulos sobrios.</td></tr>
+    <tr><td>Negocios y emprendimiento</td><td>OpusClip (pódcast de 1–2 h) + subtítulos + ChatGPT/Claude para la descripción. Víctor Rodríguez pide clips de 30 a 60 s con subtítulos.</td></tr>
+    <tr><td>Dinero, trading e inversión</td><td>CapCut con subtítulos automáticos, cifras y palabras clave resaltadas. Clips cortos centrados en una frase.</td></tr>
+    <tr><td>Creadores hispanos</td><td>CapCut (cortes rápidos, zoom en el momento fuerte) o Submagic para subtítulos animados.</td></tr>
+    <tr><td>Tendencias y música</td><td>CapCut con plantillas de texto y siempre el sonido oficial de TikTok que pide la campaña.</td></tr>
   </tbody></table>
   <p class="peq">Para empezar sin gastar: CapCut gratis + la Mesa de corte de esta app para localizar momentos. Cuando lleguen los primeros cobros, OpusClip Starter ahorra mucho tiempo.</p>`;
 }

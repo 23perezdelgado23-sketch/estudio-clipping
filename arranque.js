@@ -10,7 +10,7 @@ const PLAN = [
       ["p-edad", "Tener 18 años o más: Whop y Vyro lo exigen.", "oficial"],
       ["p-whop", "Crear la cuenta en whop.com y entrar en Content Rewards (ver «Conseguir vídeos → Whop»).", "oficial"],
       ["p-vyro", "Crear UNA sola cuenta en vyro.com y comprobar al registrarte que funciona en tu país.", "oficial"],
-      ["p-campanas", "Mirar las campañas activas en los 4 nichos y en qué idioma son. Si un nicho no tiene campañas, cambiarlo por otro que sí tenga.", ""],
+      ["p-campanas", "Mirar en el Radar de campañas las que hay activas para los 4 nichos y en tu idioma. Si un nicho no tiene campañas, cambiarlo por otro que sí tenga.", ""],
       ["p-capcut", "Instalar CapCut (gratis) para editar.", ""],
       ["p-ajustes", "Rellenar Ajustes: el cambio del dólar y vuestro objetivo de clips al día.", ""],
     ],

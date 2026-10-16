@@ -76,3 +76,10 @@ body { height: 100dvh; overscroll-behavior: none; -webkit-tap-highlight-color: t
 @media (hover: none) and (pointer: coarse) {
   input, select, textarea { font-size: 16px; }
 }
+
+@media (max-width: 760px) {
+  .radar-lista { grid-template-columns: 1fr; }
+  .radar-datos { grid-template-columns: repeat(2, 1fr); }
+  .num-in { width: 100px; }
+  table.cal td { min-width: 110px; }
+}

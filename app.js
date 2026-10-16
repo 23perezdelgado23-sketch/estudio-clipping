@@ -100,6 +100,18 @@ function aviso(texto) {
   a._t = setTimeout(() => a.classList.add("oculto"), 2400);
 }
 
+// ---------- Texto para TikTok ----------
+// Junta la etiqueta de publicidad (al principio, para que se vea sin pulsar «más»), la descripción, la mención y los hashtags
+function textoParaTikTok(clip, camp) {
+  const partes = [];
+  if (camp?.divulgacion) partes.push(camp.divulgacion.trim());
+  partes.push((clip.descripcion || clip.gancho || "").trim());
+  if (camp?.mencion) partes.push(camp.mencion.trim());
+  const tags = [...new Set(`${camp?.hashtagsObl || ""} ${clip.hashtags || ""}`.split(/\s+/).filter((t) => t.startsWith("#")))];
+  if (tags.length) partes.push(tags.join(" "));
+  return partes.filter(Boolean).join("\n\n");
+}
+
 // ---------- Cálculos ----------
 const campana = (id) => D.campanas.find((c) => c.id === id);
 const cuenta = (id) => D.cuentas.find((c) => c.id === id);
@@ -136,8 +148,11 @@ function enMes(fecha, ref = new Date()) {
 const SECCIONES = [
   ["empieza", "➜", "Empieza aquí", "Qué hacer paso a paso: plan de 30 días, rutina diaria y revisión semanal"],
   ["panel", "◉", "Panel", "Cómo vas hoy y este mes"],
+  ["radar", "◎", "Radar de campañas", "Las campañas reales de Whop y Vyro, puntuadas para tus cuentas: aquí salen las joyas"],
   ["campanas", "◆", "Campañas", "Las campañas a las que te has unido: tarifa, presupuesto y reglas"],
   ["clips", "▶", "Clips", "Del corte al cobro: mueve cada clip según avanza"],
+  ["calendario", "▦", "Calendario", "Qué publica cada cuenta cada día de la semana"],
+  ["numeros", "Σ", "Números", "Vistas y euros por día, qué funciona, proyección y exportar"],
   ["conseguir", "⤓", "Conseguir vídeos", "Dónde conseguir vídeos con permiso: Whop, Vyro y acuerdos con creadores"],
   ["mesa", "✂", "Mesa de corte", "Abre un vídeo largo y marca los momentos que merecen clip"],
   ["cuentas", "@", "Cuentas", "Tus cuentas de TikTok y cómo rinde cada una"],
@@ -157,6 +172,8 @@ function pintarMenu() {
       `<button data-s="${id}" class="${id === seccion ? "activo" : ""}"><span class="ico">${ico}</span>${nombre}${
         id === "clips" && pendientesListo
           ? `<span class="contador" title="Listos para subir">${pendientesListo}</span>`
+          : id === "radar" && D.radar?.items?.length && D.radar.items.filter((c) => evaluar(c).joya).length
+          ? `<span class="contador" style="background:var(--verde);color:#0a0a0d" title="Joyas en el radar">${D.radar.items.filter((c) => evaluar(c).joya).length}</span>`
           : id === "empieza" && progresoPlan().pct < 100
           ? `<span class="contador" style="background:var(--cian);color:#0a0a0d" title="Progreso del plan">${progresoPlan().pct} %</span>`
           : ""
@@ -263,6 +280,8 @@ function vistaPanel() {
   if (sinEnviar) alertas.push(`Tienes <b>${sinEnviar}</b> clip(s) publicados sin enviar a su campaña. Si no envías el enlace, no cuentan.`);
   const usdSinCambio = D.campanas.some((c) => c.moneda === "USD") && !n(D.ajustes.usdEur);
   if (usdSinCambio) alertas.push(`Tienes campañas en dólares y no has puesto el cambio en <b>Ajustes</b>: mientras tanto, la app cuenta 1 $ = 1 €.`);
+  const joyas = (D.radar?.items || []).map(evaluar).filter((c) => c.joya && !D.campanas.some((k) => k.radarId === c.id));
+  if (joyas.length) alertas.push(`Hay <b>${joyas.length}</b> joya(s) en el <b>Radar de campañas</b> que aún no tienes en Campañas.`);
   const listos = D.clips.filter((c) => c.estado === "listo").length;
   if (listos) alertas.push(`Tienes <b>${listos}</b> clip(s) listos para subir a TikTok.`);
 
@@ -366,6 +385,10 @@ function editarCampana(c) {
       <label>Enlace a la campaña<input name="enlace" value="${esc(c.enlace)}" placeholder="https://" /></label>
       <label>Material (carpeta de vídeos)<input name="material" value="${esc(c.material)}" placeholder="Enlace al Drive o carpeta del creador" /></label>
       <label class="ancho">Etiqueta de publicidad que exige<input name="divulgacion" value="${esc(c.divulgacion)}" placeholder="Ej.: #Sponsored o #MarcaAd al principio de la descripción" /></label>
+      <label>Cuenta que hay que mencionar<input name="mencion" value="${esc(c.mencion)}" placeholder="@creador (si la campaña lo pide)" /></label>
+      <label>Hashtags obligatorios<input name="hashtagsObl" value="${esc(c.hashtagsObl)}" placeholder="#marca #campaña" /></label>
+      <label>Duración mínima del clip (s)<input name="durMin" type="number" min="0" value="${esc(c.durMin)}" /></label>
+      <label>Duración máxima del clip (s)<input name="durMax" type="number" min="0" value="${esc(c.durMax)}" /></label>
       <label class="ancho">Reglas de la campaña<textarea name="reglas" placeholder="Duración, menciones, hashtags obligatorios, qué está prohibido…">${esc(c.reglas)}</textarea></label>
     </div>
     <datalist id="plataformas"><option>Whop</option><option>Vyro</option><option>Acuerdo directo con el creador</option><option>Otra</option></datalist>
@@ -481,10 +504,14 @@ function editarClip(c, base) {
       <label>Cuenta de TikTok<select name="cuentaId">${opciones(D.cuentas.map((x) => [x.id, x.usuario]), c.cuentaId, "Sin cuenta")}</select></label>
       <label>Estado<select name="estado">${opciones(ESTADOS_CLIP.map((e) => [e.id, e.nombre]), c.estado)}</select></label>
       <label>Publicado el<input name="fechaPub" type="datetime-local" value="${esc(c.fechaPub)}" /></label>
+      <label>Programado para (día)<input name="programadoDia" type="date" value="${esc(c.programadoDia)}" /></label>
+      <label>Hora prevista (opcional)<input name="programadoHora" type="time" value="${esc(c.programadoHora)}" /></label>
+      <label>Minutos de edición<input name="minutos" type="number" min="0" value="${esc(c.minutos)}" placeholder="Para saber cuánto ganas por hora" /></label>
       <label>Vídeo de origen<input name="fuente" value="${esc(c.fuente)}" placeholder="Directo, pódcast o vídeo del que sale" /></label>
       <label>Tramo (inicio – fin)<div style="display:flex;gap:6px"><input name="inicio" value="${esc(c.inicio)}" placeholder="12:30" /><input name="fin" value="${esc(c.fin)}" placeholder="13:05" /></div></label>
       <label class="ancho">Gancho (primeros segundos)<input name="gancho" list="lista-ganchos" value="${esc(c.gancho)}" placeholder="Escribe o elige uno de tu biblioteca" /></label>
       <label class="ancho">Descripción para TikTok<textarea name="descripcion" placeholder="Texto del post">${esc(c.descripcion)}</textarea></label>
+      <div class="ancho"><button class="btn" id="m-texto" type="button">Preparar texto para pegar en TikTok</button> <span class="peq">Junta tu descripción con la mención, los hashtags y la etiqueta de publicidad que exige la campaña.</span><div id="m-texto-caja"></div></div>
       <label>Hashtags<input name="hashtags" value="${esc(c.hashtags)}" placeholder="#clip #podcast" /></label>
       <label>Sonido<input name="sonido" value="${esc(c.sonido)}" placeholder="Audio original / sonido de TikTok" /></label>
       <label class="ancho">Enlace del TikTok<input name="enlace" value="${esc(c.enlace)}" placeholder="https://www.tiktok.com/@…" /></label>
@@ -497,7 +524,8 @@ function editarClip(c, base) {
         ${camp?.reglas ? `<div class="tarjeta" style="margin-top:10px"><b>Reglas de «${esc(camp.nombre)}»</b><div class="peq" style="white-space:pre-wrap">${esc(camp.reglas)}</div></div>` : ""}
       </div>
       <label class="ancho">Notas<textarea name="notas">${esc(c.notas)}</textarea></label>
-      ${CUENTAN_VISTAS.includes(c.estado) ? `<div class="ancho peq">Estimado con las condiciones de la campaña: <b>${fmtEur(gananciaClip(c))}</b></div>` : ""}
+      ${CUENTAN_VISTAS.includes(c.estado) ? `<div class="ancho peq">Estimado con las condiciones de la campaña: <b>${fmtEur(gananciaClip(c))}</b>${camp && n(camp.minVistas) && n(c.vistas) < n(camp.minVistas) ? ` · faltan <b>${fmtNum(n(camp.minVistas) - n(c.vistas))}</b> vistas para llegar al mínimo de cobro` : ""}</div>` : ""}
+      <div class="ancho peq" id="m-aviso-dur"></div>
     </div>
     <datalist id="lista-ganchos">${D.ganchos.map((g) => `<option value="${esc(g.texto)}"></option>`).join("")}</datalist>
     <div class="modal-pie">
@@ -506,12 +534,44 @@ function editarClip(c, base) {
     </div>`,
     (caja) => {
       caja.querySelector("#m-cancelar").onclick = cerrarModal;
+      // Avisa si la duración no cumple lo que pide la campaña
+      const revisarDuracion = () => {
+        const f = leerForm(caja);
+        const k = campana(f.campanaId);
+        const d = n(f.duracion);
+        const el = caja.querySelector("#m-aviso-dur");
+        if (!k || !d) return (el.textContent = "");
+        el.innerHTML =
+          n(k.durMin) && d < n(k.durMin)
+            ? `<span style="color:var(--ambar)">⚠ La campaña pide un mínimo de ${n(k.durMin)} s.</span>`
+            : n(k.durMax) && d > n(k.durMax)
+            ? `<span style="color:var(--ambar)">⚠ La campaña pide un máximo de ${n(k.durMax)} s.</span>`
+            : n(k.durMin) || n(k.durMax)
+            ? `<span style="color:var(--verde)">✓ Duración dentro de lo que pide la campaña.</span>`
+            : "";
+      };
+      caja.querySelector('[name="duracion"]').oninput = revisarDuracion;
+      caja.querySelector('[name="campanaId"]').onchange = revisarDuracion;
+      revisarDuracion();
+      caja.querySelector("#m-texto").onclick = () => {
+        const f = leerForm(caja);
+        const texto = textoParaTikTok(f, campana(f.campanaId));
+        const zona = caja.querySelector("#m-texto-caja");
+        zona.innerHTML = `<textarea id="m-texto-final" style="width:100%;min-height:110px;margin-top:8px">${esc(texto)}</textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button class="btn peq prim" type="button" id="m-copiar-texto">Copiar</button><span class="peq">${texto.length} caracteres</span></div>`;
+        zona.querySelector("#m-copiar-texto").onclick = async () => {
+          await navigator.clipboard.writeText(zona.querySelector("#m-texto-final").value);
+          aviso("Texto copiado: pégalo en TikTok");
+        };
+      };
       caja.querySelector("#m-guardar").onclick = () => {
         const f = leerForm(caja);
         if (!f.titulo) return aviso("Ponle un título al clip");
         f.checks = f.checks || {};
         if (CUENTAN_VISTAS.includes(f.estado) && !f.fechaPub) f.fechaPub = new Date().toISOString().slice(0, 16);
+        const vistasAntes = c.vistas;
         Object.assign(c, f);
+        if (f.vistas !== "" && String(f.vistas) !== String(vistasAntes ?? "")) registrarVistas(c, f.vistas);
         if (nuevo) D.clips.push(c);
         guardar();
         cerrarModal();
@@ -709,8 +769,10 @@ function editarCuenta(a) {
     <div class="form">
       <label>Usuario<input name="usuario" value="${esc(a.usuario)}" placeholder="@micuenta" /></label>
       <label>Red<select name="red">${opciones([["TikTok", "TikTok"], ["Instagram Reels", "Instagram Reels"], ["YouTube Shorts", "YouTube Shorts"], ["X", "X"]], a.red)}</select></label>
-      <label>Nicho<input name="nicho" value="${esc(a.nicho)}" placeholder="Pódcast, gaming, humor…" /></label>
+      <label>Nicho<input name="nicho" value="${esc(a.nicho)}" placeholder="Negocios, dinero, creadores, tendencias…" /></label>
       <label>Seguidores<input name="seguidores" type="number" min="0" value="${esc(a.seguidores)}" /></label>
+      <label>Clips al día (objetivo)<input name="objetivoDia" type="number" min="0" value="${esc(a.objetivoDia)}" placeholder="Para el Calendario" /></label>
+      <label class="ancho">Palabras clave del nicho (para el Radar)<input name="claves" value="${esc(a.claves)}" placeholder="Separadas por comas: podcast, emprendimiento, trading…" /></label>
 
       <label>Estado<select name="estado">${opciones([["calentando", "Calentando (cuenta nueva)"], ["activa", "Activa"], ["pausada", "Pausada"]], a.estado)}</select></label>
       <label>Enlace al perfil<input name="enlace" value="${esc(a.enlace)}" placeholder="https://www.tiktok.com/@…" /></label>
@@ -725,7 +787,9 @@ function editarCuenta(a) {
       caja.querySelector("#m-guardar").onclick = () => {
         const f = leerForm(caja);
         if (!f.usuario) return aviso("Pon el usuario de la cuenta");
+        const segAntes = a.seguidores;
         Object.assign(a, f);
+        if (f.seguidores !== "" && String(f.seguidores) !== String(segAntes ?? "")) registrarSeguidores(a, f.seguidores);
         if (nuevo) D.cuentas.push(a);
         guardar();
         cerrarModal();
@@ -751,13 +815,25 @@ function editarCuenta(a) {
 let filtroGancho = "";
 function vistaGanchos() {
   acciones([["nuevo-gancho", "+ Nuevo gancho", "prim"]]);
-  $("#nuevo-gancho").onclick = () => {
-    const texto = prompt("Escribe el gancho:");
-    if (!texto) return;
-    D.ganchos.unshift({ id: uid(), texto: texto.trim(), tipo: "Propio", favorito: false });
-    guardar();
-    vistaGanchos();
-  };
+  $("#nuevo-gancho").onclick = () =>
+    abrirModal(
+      `<h3>Nuevo gancho</h3>
+      <div class="form"><label class="ancho">Frase<input name="texto" placeholder="Ej.: Nadie te cuenta esto de…" /></label>
+      <label>Tipo<input name="tipo" list="tipos-gancho" value="Propio" /></label></div>
+      <datalist id="tipos-gancho">${[...new Set(D.ganchos.map((g) => g.tipo))].map((t) => `<option value="${esc(t)}"></option>`).join("")}</datalist>
+      <div class="modal-pie"><div></div><div><button class="btn" id="m-cancelar">Cancelar</button> <button class="btn prim" id="m-guardar">Guardar</button></div></div>`,
+      (caja) => {
+        caja.querySelector("#m-cancelar").onclick = cerrarModal;
+        caja.querySelector("#m-guardar").onclick = () => {
+          const f = leerForm(caja);
+          if (!f.texto.trim()) return aviso("Escribe el gancho");
+          D.ganchos.unshift({ id: uid(), texto: f.texto.trim(), tipo: (f.tipo || "Propio").trim(), favorito: false });
+          guardar();
+          cerrarModal();
+          vistaGanchos();
+        };
+      }
+    );
   const datos = D.ganchos.map((g) => {
     const cs = D.clips.filter((c) => (c.gancho || "").trim() === g.texto.trim() && CUENTAN_VISTAS.includes(c.estado));
     const v = cs.reduce((s, c) => s + n(c.vistas), 0);
@@ -1080,6 +1156,7 @@ function vistaAjustes() {
         <label>Tu nombre<input name="nombre" value="${esc(a.nombre)}" /></label>
         <label>Cuántos euros vale 1 dólar hoy<input name="usdEur" type="number" step="0.001" min="0" value="${esc(a.usdEur)}" placeholder="Búscalo en Google: «1 dólar en euros»" /></label>
         <label>Objetivo de clips al día (todas las cuentas)<input name="objetivoDia" type="number" min="0" value="${esc(a.objetivoDia)}" placeholder="Ej.: 8" /></label>
+        <label>Idioma de tus cuentas (Radar)<select name="idiomaRadar">${opciones(Object.entries(IDIOMAS), a.idiomaRadar || "es")}</select></label>
         <label>Objetivo de ingresos al mes (€)<input name="objetivoMes" type="number" min="0" value="${esc(a.objetivoMes)}" placeholder="Ej.: 300" /></label>
         <label class="ancho">Comisión que te descuentan al retirar el dinero (%)<input name="comision" type="number" step="0.1" min="0" value="${esc(a.comision)}" placeholder="Solo si PayPal o Stripe te cobran algo. Whop cobra su 10 % a la marca, no a ti" /></label>
       </div>
@@ -1098,11 +1175,11 @@ function vistaAjustes() {
         <button class="btn peligro" id="aj-borrar">Borrar todo</button>
       </div>
     </div>
-    <p class="peq">Estudio Clipping 2.1 · Todo funciona sin internet, salvo los enlaces que abras.</p>`;
+    <p class="peq">Estudio Clipping 3.0 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
   $("#aj-guardar").onclick = () => {
     const f = leerForm($("#contenido"));
     const num = (x) => (x === "" ? "" : n(x));
-    Object.assign(D.ajustes, { nombre: f.nombre, usdEur: num(f.usdEur), comision: num(f.comision), objetivoDia: num(f.objetivoDia), objetivoMes: num(f.objetivoMes) });
+    Object.assign(D.ajustes, { nombre: f.nombre, usdEur: num(f.usdEur), comision: num(f.comision), objetivoDia: num(f.objetivoDia), objetivoMes: num(f.objetivoMes), idiomaRadar: f.idiomaRadar || "es" });
     guardar();
     aviso("Ajustes guardados");
   };
@@ -1138,6 +1215,9 @@ function vistaAjustes() {
 const VISTAS = {
   empieza: vistaArranque,
   panel: vistaPanel,
+  radar: vistaRadar,
+  calendario: vistaCalendario,
+  numeros: vistaNumeros,
   campanas: vistaCampanas,
   conseguir: vistaConseguir,
   clips: vistaClips,
@@ -1171,6 +1251,12 @@ const VISTAS = {
   if (!guardados) guardar();
   ir(progresoPlan().pct < 100 ? "empieza" : "panel");
   window.nube && nube.iniciar();
+  // En el Mac, el radar se lee solo si la última lectura tiene más de 6 horas (y se revisa cada 30 minutos)
+  if (window.estudio.radar) {
+    const toca = () => !D.radar?.actualizado || Date.now() - Date.parse(D.radar.actualizado) > RADAR_HORAS * 36e5;
+    setTimeout(() => toca() && actualizarRadar(true), 8000);
+    setInterval(() => toca() && actualizarRadar(true), 30 * 60000);
+  }
 })();
 
 // La sincronización trae datos de otro dispositivo: se cargan y se vuelve a pintar el apartado abierto
