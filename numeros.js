@@ -84,11 +84,12 @@ function vistaNumeros() {
     ["resumen", "Resumen"],
     ["rankings", "Qué funciona"],
     ["evolucion", "Evolución"],
+    ["consejos", "✨ Consejos IA"],
     ["exportar", "Exportar"],
   ];
   $("#contenido").innerHTML = `<div class="pestanas">${tabs.map(([id, t]) => `<button class="${id === tabNumeros ? "activo" : ""}" data-tab="${id}">${t}</button>`).join("")}</div><div id="num-cuerpo"></div>`;
   $("#contenido").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => ((tabNumeros = b.dataset.tab), vistaNumeros())));
-  ({ actualizar: numActualizar, resumen: numResumen, rankings: numRankings, evolucion: numEvolucion, exportar: numExportar })[tabNumeros]();
+  ({ actualizar: numActualizar, resumen: numResumen, rankings: numRankings, evolucion: numEvolucion, consejos: numConsejos, exportar: numExportar })[tabNumeros]();
 }
 
 const selectorPeriodo = () =>
@@ -284,7 +285,14 @@ function numEvolucion() {
     }`;
 }
 
-// 5. Exportar a CSV (se abre en Excel o Numbers)
+// 5. Consejos de la IA sobre tus propios números
+function numConsejos() {
+  $("#num-cuerpo").innerHTML = `<div class="tarjeta">La IA estudia tus clips publicados (cuenta, campaña, gancho, duración, hora, interacción y minutos de edición) y te dice qué funciona, qué no y qué hacer esta semana. Solo usa tus datos.</div>
+    <button class="btn prim" id="num-ia" style="margin-top:12px">✨ Analizar mis números</button><div id="num-ia-res" style="margin-top:12px"></div>`;
+  $("#num-ia").onclick = () => ia.consejos($("#num-ia-res"));
+}
+
+// 6. Exportar a CSV (se abre en Excel o Numbers)
 function csv(filas) {
   return "﻿" + filas.map((f) => f.map((x) => `"${String(x ?? "").replace(/"/g, '""')}"`).join(";")).join("\n");
 }

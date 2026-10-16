@@ -154,7 +154,8 @@ const SECCIONES = [
   ["calendario", "▦", "Calendario", "Qué publica cada cuenta cada día de la semana"],
   ["numeros", "Σ", "Números", "Vistas y euros por día, qué funciona, proyección y exportar"],
   ["conseguir", "⤓", "Conseguir vídeos", "Dónde conseguir vídeos con permiso: Whop, Vyro y acuerdos con creadores"],
-  ["mesa", "✂", "Mesa de corte", "Abre un vídeo largo y marca los momentos que merecen clip"],
+  ["asistente", "✨", "Asistente IA", "Pregunta lo que quieras: conoce tus cuentas, tus campañas, tus números y el radar"],
+  ["mesa", "✂", "Mesa de corte", "Abre un vídeo largo y marca los momentos que merecen clip, o deja que la IA los busque en la transcripción"],
   ["cuentas", "@", "Cuentas", "Tus cuentas de TikTok y cómo rinde cada una"],
   ["ganchos", "⚡", "Ganchos", "Frases de arranque para los primeros segundos y cuáles te funcionan"],
   ["calculadora", "€", "Calculadora", "Cuántas vistas necesitas y cuánto puedes ganar"],
@@ -200,10 +201,12 @@ function acciones(lista) {
 // ---------- Modal genérico ----------
 function abrirModal(html, alMontar) {
   $("#modal-caja").innerHTML = html;
+  $("#modal-caja").scrollTop = 0;
   $("#modal").classList.remove("oculto");
   alMontar && alMontar($("#modal-caja"));
-  const primero = $("#modal-caja").querySelector("input, select, textarea");
-  primero && primero.focus();
+  // En las fichas de consulta (informe) no se pone el cursor en una casilla: en el móvil abriría el teclado y movería la ventana
+  const primero = $("#modal-caja").querySelector("[data-sinfoco]") ? null : $("#modal-caja").querySelector("input, select, textarea");
+  primero && primero.focus({ preventScroll: true });
 }
 function cerrarModal() {
   $("#modal").classList.add("oculto");
@@ -280,6 +283,13 @@ function vistaPanel() {
   if (sinEnviar) alertas.push(`Tienes <b>${sinEnviar}</b> clip(s) publicados sin enviar a su campaña. Si no envías el enlace, no cuentan.`);
   const usdSinCambio = D.campanas.some((c) => c.moneda === "USD") && !n(D.ajustes.usdEur);
   if (usdSinCambio) alertas.push(`Tienes campañas en dólares y no has puesto el cambio en <b>Ajustes</b>: mientras tanto, la app cuenta 1 $ = 1 €.`);
+  const porUnirte = D.campanas.filter((c) => c.estado === "porunirte");
+  if (porUnirte.length) alertas.push(`Tienes <b>${porUnirte.length}</b> campaña(s) <b>por unirte</b> (las ha añadido el piloto o la IA): únete en su plataforma y cámbialas a Activa.`);
+  const flojas = D.campanas.filter((k) => k.estado === "activa" && k.radarId && D.radar?.items?.some((x) => x.id === k.radarId && veredicto(x).tipo === "no"));
+  if (flojas.length) alertas.push(`Según sus datos, <b>${flojas.map((k) => esc(k.nombre)).join(", ")}</b> ya no renta: mira su informe en Campañas.`);
+  const hace30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const sinApuntar = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado) && (c.fechaPub || "").slice(0, 10) >= hace30 && (c.historial || []).slice(-1)[0]?.f !== hoy).length;
+  if (sinApuntar) alertas.push(`Apunta las vistas de hoy de <b>${sinApuntar}</b> clip(s) en <b>Números → Actualizar vistas</b> (así sabes lo que ganas cada día).`);
   const joyas = (D.radar?.items || []).map(evaluar).filter((c) => c.joya && !D.campanas.some((k) => k.radarId === c.id));
   if (joyas.length) alertas.push(`Hay <b>${joyas.length}</b> joya(s) en el <b>Radar de campañas</b> que aún no tienes en Campañas.`);
   const listos = D.clips.filter((c) => c.estado === "listo").length;
@@ -306,7 +316,7 @@ function vistaPanel() {
         <div class="tarjeta" style="cursor:pointer" id="ir-rutina"><div class="peq">RUTINA DE HOY · ${hechos}/${RUTINA.length}</div><div class="barra" style="margin-top:10px"><div style="width:${(hechos / RUTINA.length) * 100}%"></div></div></div>
       </div>`;
     })()}
-    ${alertas.length ? `<h2>Avisos</h2><div class="tarjeta">${alertas.map((a) => `<div style="padding:4px 0">• ${a}</div>`).join("")}</div>` : ""}
+    ${alertas.length ? `<h2>Qué hacer hoy</h2><div class="tarjeta">${alertas.map((a) => `<div style="padding:4px 0">• ${a}</div>`).join("")}</div>` : ""}
 
     <div class="rejilla dos" style="margin-top:14px">
       <div class="tarjeta">
@@ -341,27 +351,28 @@ function vistaPanel() {
 function vistaCampanas() {
   acciones([["nueva-camp", "+ Nueva campaña", "prim"]]);
   $("#nueva-camp").onclick = () => editarCampana();
-  const orden = { activa: 0, pausada: 1, terminada: 2 };
+  const orden = { porunirte: 0, activa: 1, pausada: 2, terminada: 3 };
   const lista = [...D.campanas].sort((a, b) => (orden[a.estado] ?? 3) - (orden[b.estado] ?? 3));
   $("#contenido").innerHTML = lista.length
     ? `<table><thead><tr><th>Campaña</th><th>Plataforma</th><th class="num">Tarifa / 1.000</th><th>Presupuesto gastado</th><th class="num">Clips</th><th class="num">Vistas</th><th class="num">Estimado</th><th>Estado</th></tr></thead><tbody>
       ${lista
         .map((c) => {
           const t = totalesCampana(c);
-          const color = c.estado === "activa" ? "verde" : c.estado === "pausada" ? "ambar" : "";
+          const color = c.estado === "activa" ? "verde" : c.estado === "pausada" ? "ambar" : c.estado === "porunirte" ? "cian" : "";
           return `<tr data-id="${c.id}" style="cursor:pointer">
           <td><b>${esc(c.nombre)}</b><div class="peq">${esc(c.creador || "")}</div></td>
           <td>${esc(c.plataforma || "—")}</td>
           <td class="num">${fmtMon(c.cpm, c.moneda)}</td>
           <td style="min-width:140px"><div class="barra"><div style="width:${Math.min(100, n(c.gastadoPct))}%"></div></div><div class="peq">${fmtNum(c.gastadoPct)} %${c.presupuesto ? " de " + fmtMon(c.presupuesto, c.moneda) : ""}</div></td>
           <td class="num">${t.clips}</td><td class="num">${fmtCorto(t.vistas)}</td><td class="num">${fmtEur(t.ganado)}</td>
-          <td><span class="chip ${color}">${esc(c.estado)}</span></td></tr>`;
+          <td><span class="chip ${color}">${esc({ porunirte: "Por unirte", activa: "Activa", pausada: "Pausada", terminada: "Terminada" }[c.estado] || c.estado)}</span>${c.radarId && D.radar?.items?.find((x) => x.id === c.radarId) ? ` <button class="btn peq" data-informe="${c.radarId}">Informe</button>` : ""}</td></tr>`;
         })
         .join("")}</tbody></table>
       <p class="peq">El presupuesto gastado lo ves en la página de la campaña (Whop, Vyro…). Actualízalo de vez en cuando: cuando se agota, los clips dejan de cobrar.</p>`
     : `<div class="vacio">No tienes campañas. Cuando te unas a una en Whop, Vyro u otra plataforma, apúntala aquí con su tarifa y sus reglas.<br><br><button class="btn prim" id="vacio-camp">+ Nueva campaña</button></div>`;
   $("#vacio-camp") && ($("#vacio-camp").onclick = () => editarCampana());
   $("#contenido").querySelectorAll("tr[data-id]").forEach((tr) => (tr.onclick = () => editarCampana(campana(tr.dataset.id))));
+  $("#contenido").querySelectorAll("[data-informe]").forEach((b) => (b.onclick = (e) => (e.stopPropagation(), abrirInforme(b.dataset.informe))));
 }
 
 function editarCampana(c) {
@@ -381,7 +392,7 @@ function editarCampana(c) {
       <label>Máximo a cobrar por clip<input name="maxPorClip" type="number" min="0" step="0.01" value="${esc(c.maxPorClip)}" /></label>
       <label>Redes permitidas<input name="redes" value="${esc(c.redes)}" placeholder="TikTok, Reels, Shorts" /></label>
       <label>Termina el<input name="fechaFin" type="date" value="${esc(c.fechaFin)}" /></label>
-      <label>Estado<select name="estado">${opciones([["activa", "Activa"], ["pausada", "Pausada"], ["terminada", "Terminada"]], c.estado)}</select></label>
+      <label>Estado<select name="estado">${opciones([["porunirte", "Por unirte"], ["activa", "Activa"], ["pausada", "Pausada"], ["terminada", "Terminada"]], c.estado)}</select></label>
       <label>Enlace a la campaña<input name="enlace" value="${esc(c.enlace)}" placeholder="https://" /></label>
       <label>Material (carpeta de vídeos)<input name="material" value="${esc(c.material)}" placeholder="Enlace al Drive o carpeta del creador" /></label>
       <label class="ancho">Etiqueta de publicidad que exige<input name="divulgacion" value="${esc(c.divulgacion)}" placeholder="Ej.: #Sponsored o #MarcaAd al principio de la descripción" /></label>
@@ -511,6 +522,7 @@ function editarClip(c, base) {
       <label>Tramo (inicio – fin)<div style="display:flex;gap:6px"><input name="inicio" value="${esc(c.inicio)}" placeholder="12:30" /><input name="fin" value="${esc(c.fin)}" placeholder="13:05" /></div></label>
       <label class="ancho">Gancho (primeros segundos)<input name="gancho" list="lista-ganchos" value="${esc(c.gancho)}" placeholder="Escribe o elige uno de tu biblioteca" /></label>
       <label class="ancho">Descripción para TikTok<textarea name="descripcion" placeholder="Texto del post">${esc(c.descripcion)}</textarea></label>
+      <div class="ancho"><button class="btn" id="m-ia" type="button">✨ Ganchos y texto con IA</button> <span class="peq">Te propone 5 ganchos, el título en pantalla, la descripción y los hashtags para este clip.</span><div id="m-ia-caja"></div></div>
       <div class="ancho"><button class="btn" id="m-texto" type="button">Preparar texto para pegar en TikTok</button> <span class="peq">Junta tu descripción con la mención, los hashtags y la etiqueta de publicidad que exige la campaña.</span><div id="m-texto-caja"></div></div>
       <label>Hashtags<input name="hashtags" value="${esc(c.hashtags)}" placeholder="#clip #podcast" /></label>
       <label>Sonido<input name="sonido" value="${esc(c.sonido)}" placeholder="Audio original / sonido de TikTok" /></label>
@@ -553,6 +565,14 @@ function editarClip(c, base) {
       caja.querySelector('[name="duracion"]').oninput = revisarDuracion;
       caja.querySelector('[name="campanaId"]').onchange = revisarDuracion;
       revisarDuracion();
+      caja.querySelector("#m-ia").onclick = () =>
+        ia.ganchosClip(leerForm(caja), caja.querySelector("#m-ia-caja"), (valores) => {
+          Object.entries(valores).forEach(([k, v]) => {
+            const el = caja.querySelector(`[name="${k}"]`);
+            if (el) el.value = v;
+          });
+          aviso("Aplicado en la ficha. Pulsa Guardar para quedártelo.");
+        });
       caja.querySelector("#m-texto").onclick = () => {
         const f = leerForm(caja);
         const texto = textoParaTikTok(f, campana(f.campanaId));
@@ -656,6 +676,8 @@ function vistaMesa() {
       </div></div>`
     : `<div class="vacio">Abre el vídeo largo (directo, pódcast, entrevista) que vas a convertir en clips.<br>Lo verás aquí, marcarás los mejores momentos con el teclado y cada uno se puede convertir en un clip del tablero.<br><br><button class="btn prim" id="vacio-abrir">Abrir vídeo…</button></div>
        ${D.cortes.length ? `<p class="peq" style="margin-top:14px">Tienes ${D.cortes.length} momentos guardados de ${new Set(D.cortes.map((c) => c.ruta)).size} vídeo(s). Abre el mismo vídeo para verlos.</p>` : ""}`;
+  $("#contenido").insertAdjacentHTML("beforeend", bloqueMomentosIA());
+  montarMomentosIA();
   if (!mesa.video) {
     $("#vacio-abrir").onclick = () => $("#abrir-video").click();
     return;
@@ -1060,7 +1082,20 @@ function editarCobro(p) {
 // ======================================================
 function vistaGuia() {
   $("#contenido").innerHTML = `<div class="guia">
-  <div class="indice-guia">${["Qué es", "Cómo se cobra", "Flujo de trabajo", "Clips que funcionan en TikTok", "Originalidad y derechos", "Cuentas", "Riesgos", "Impuestos", "Fuentes"].map((t, i) => `<a class="chip" href="#g${i}">${t}</a>`).join("")}</div>
+  <div class="indice-guia">${["Qué es", "Cómo se cobra", "Flujo de trabajo", "Clips que funcionan en TikTok", "Originalidad y derechos", "Cuentas", "Riesgos", "Impuestos", "Fuentes"].map((t, i) => `<a class="chip" href="#g${i}">${t}</a>`).join("")}<a class="chip verde" href="#grenta">¿Me renta una campaña?</a></div>
+
+  <h2 id="grenta">Cómo saber si una campaña te renta antes de unirte</h2>
+  <p>La tarifa alta engaña. Lo que importa es <b>cuánto cobran de verdad los clips</b> de esa campaña. El <b>Radar</b> hace este análisis solo con cada campaña (botón «Informe: ¿me renta?»), con los datos que publica Whop:</p>
+  <table><thead><tr><th>Mira esto</th><th>Por qué</th><th>Mala señal</th></tr></thead><tbody>
+    <tr><td><b>Vistas medias por clip aprobado</b></td><td>Es lo que suele sacar un clip normal en esa campaña.</td><td>Por debajo del mínimo para cobrar: la mayoría de clips cobran 0.</td></tr>
+    <tr><td><b>% de vistas pagadas</b></td><td>Presupuesto gastado ÷ tarifa, frente a las vistas totales.</td><td>Muy bajo: casi todas las vistas son de clips que no llegaron al mínimo.</td></tr>
+    <tr><td><b>Lo que gana un clipper de media</b></td><td>Presupuesto gastado ÷ clippers.</td><td>Unos pocos dólares: hay mucha gente para muy poco.</td></tr>
+    <tr><td><b>Tendencia de vistas</b></td><td>Vistas de toda la campaña en los últimos 7 días frente a su mejor semana.</td><td>Hundida: el público se ha cansado del contenido.</td></tr>
+    <tr><td><b>Dinero que queda por clipper</b></td><td>Presupuesto restante ÷ clippers.</td><td>Menos de 3 $: aunque tus clips funcionen, no queda casi nada.</td></tr>
+  </tbody></table>
+  <div class="caja"><b>Ejemplo real (TDJ, 16/10/2026):</b> pagaba 3,50 $ por 1.000 vistas, de las tarifas más altas. Pero sus 784 clips aprobados sacaban <b>594 vistas de media</b> (cobra desde 1.000), solo se había pagado ~1 de cada 7 vistas, cada uno de sus 156 clippers había ganado <b>1,45 $</b> de media y sus vistas habían caído de ~300.000 a la semana a ~25.000. Conclusión: no rentaba. Una campaña que paga 1 $ con clips de 3.000 vistas de media te deja más dinero.</div>
+  <p class="peq">En Vyro no se publican vistas ni clippers: allí solo se puede mirar el presupuesto, lo rápido que lo gasta y la fecha de fin.</p>
+
 
   <h2 id="g0">Qué es el clipping</h2>
   <p>Cortar contenido largo (directos, pódcast, entrevistas, vídeos de YouTube) en clips cortos y verticales, y publicarlos en TikTok y otras redes. Los creadores y las marcas pagan por ello porque cada clip que se hace viral les lleva gente a su contenido.</p>
@@ -1165,6 +1200,7 @@ function vistaAjustes() {
     </div>
     ${window.nube ? nube.tarjeta() : ""}
     ${window.bloqueo ? bloqueo.tarjeta() : ""}
+    ${window.ia ? ia.tarjetaAjustes() : ""}
     <h2>Copias de seguridad</h2>
     <div class="tarjeta" style="max-width:720px">
       <p class="peq" style="margin-top:0">Tus datos están solo ${esc(window.estudio.donde || "en este Mac")}. La app guarda sola una copia diaria (las 15 últimas). Para llevarlos a otro dispositivo, exporta e importa.</p>
@@ -1175,7 +1211,7 @@ function vistaAjustes() {
         <button class="btn peligro" id="aj-borrar">Borrar todo</button>
       </div>
     </div>
-    <p class="peq">Estudio Clipping 3.0 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
+    <p class="peq">Estudio Clipping 3.1 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
   $("#aj-guardar").onclick = () => {
     const f = leerForm($("#contenido"));
     const num = (x) => (x === "" ? "" : n(x));
@@ -1203,6 +1239,7 @@ function vistaAjustes() {
   };
   window.nube && nube.montar();
   window.bloqueo && bloqueo.montar();
+  window.ia && ia.montarAjustes();
   if ($("#aj-carpeta")) $("#aj-carpeta").onclick = () => window.estudio.abrirCarpeta();
   $("#aj-borrar").onclick = () => {
     if (!confirm("¿Borrar TODOS los datos? Las copias diarias se quedan en la carpeta de datos.")) return;
@@ -1216,6 +1253,7 @@ const VISTAS = {
   empieza: vistaArranque,
   panel: vistaPanel,
   radar: vistaRadar,
+  asistente: vistaAsistente,
   calendario: vistaCalendario,
   numeros: vistaNumeros,
   campanas: vistaCampanas,

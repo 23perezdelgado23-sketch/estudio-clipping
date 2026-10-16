@@ -251,3 +251,16 @@ table.cal th.cal-hoy, table.cal td.cal-hoy { background: rgba(37,244,238,.06); }
 .cal-mas:hover { border-color: var(--cian); color: var(--cian); }
 /* Que las tarjetas de las rejillas no se ensanchen con textos largos */
 .rejilla > * { min-width: 0; }
+
+/* IA */
+.ia-res { border-color: rgba(37,244,238,.35); }
+.ia-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--borde); }
+.ia-cargando { color: var(--cian); animation: ia-latido 1.4s ease-in-out infinite; }
+@keyframes ia-latido { 50% { opacity: .45; } }
+.chat { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+.chat-m { padding: 10px 14px; border-radius: 12px; max-width: 85%; line-height: 1.5; }
+.chat-m.yo { align-self: flex-end; background: var(--rosa); color: #fff; }
+.chat-m.ia { align-self: flex-start; background: var(--panel); border: 1px solid var(--borde); }
+.chat-m.error { border-color: var(--rosa); }
+.chat-caja { display: flex; gap: 8px; margin-top: 14px; max-width: 860px; position: sticky; bottom: 0; background: var(--fondo); padding: 8px 0; }
+.chat-caja textarea { flex: 1; min-height: 46px; }
