@@ -223,7 +223,7 @@ function vistaRadar() {
     <div class="rejilla dos">
       <div class="tarjeta">
         <label style="flex-direction:row;align-items:center;gap:8px;color:var(--texto);font-size:14px"><input type="checkbox" id="r-piloto" ${D.ajustes.piloto === false ? "" : "checked"}/> <b>Cambiar mis campañas solo</b></label>
-        <p class="peq">En cada lectura del radar (Whop y Vyro): pasa a <b>Terminada</b> la que se acaba o ya no aparece, a <b>Pausada</b> la que se hunde o casi no deja dinero por clipper, y añade hasta 5 joyas nuevas como <b>Por unirte</b>. Unirte en la plataforma lo haces tú.</p>
+        <p class="peq">En cada lectura del radar (Whop y Vyro): pasa a <b>Terminada</b> la que se acaba o ya no aparece y a <b>Pausada</b> la que se hunde o casi no deja dinero por clipper (solo en las campañas a las que te has unido), y te <b>propone</b> hasta 5 joyas nuevas que encajen con tus cuentas. Las propuestas salen aparte en Campañas: unirte lo haces tú y lo que descartes no vuelve.</p>
         ${(R.registro || []).length ? `<div style="max-height:220px;overflow:auto">${R.registro.slice(0, 25).map((x) => `<div class="peq" style="padding:4px 0;border-top:1px solid var(--borde)"><b>${new Date(x.f).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</b> · ${esc(x.t)}</div>`).join("")}</div>` : `<p class="peq">Aún no ha hecho cambios.</p>`}
       </div>
       <div class="tarjeta">
@@ -500,10 +500,12 @@ function pilotoAutomatico(itemsTodos) {
       cambios.push(`Pausada «${k.nombre}»: ${v.hundida ? "sus vistas se han hundido" : "queda muy poco dinero por clipper"} (${v.motivos[0]})`);
     }
   });
-  // Joyas nuevas: hasta 5 por lectura, las mejores primero
-  const nuevas = itemsTodos
+  // Joyas nuevas: hasta 5 por lectura, las mejores primero. Sin cuentas con nicho no se propone nada (no sabe qué te encaja).
+  const descartadas = radar().descartadas || {};
+  const conNicho = D.cuentas.filter((a) => clavesCuenta(a).length);
+  const nuevas = (conNicho.length ? itemsTodos : [])
     .map(evaluar)
-    .filter((c) => c.joya && veredicto(c).tipo !== "no" && !D.campanas.some((k) => k.radarId === c.id))
+    .filter((c) => c.joya && c.cuentaSug && veredicto(c).tipo !== "no" && !descartadas[c.id] && !D.campanas.some((k) => k.radarId === c.id))
     .sort((a, b) => b.puntos - a.puntos)
     .slice(0, 5);
   nuevas.forEach((c) => {

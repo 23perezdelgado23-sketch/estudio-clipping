@@ -149,7 +149,7 @@ const SECCIONES = [
   ["empieza", "➜", "Empieza aquí", "Qué hacer paso a paso: plan de 30 días, rutina diaria y revisión semanal"],
   ["panel", "◉", "Panel", "Cómo vas hoy y este mes"],
   ["radar", "◎", "Radar de campañas", "Las campañas reales de Whop y Vyro, puntuadas para tus cuentas: aquí salen las joyas"],
-  ["campanas", "◆", "Campañas", "Las campañas a las que te has unido: tarifa, presupuesto y reglas"],
+  ["campanas", "◆", "Campañas", "Las propuestas del piloto y las campañas a las que te has unido: tarifa, presupuesto y reglas"],
   ["clips", "▶", "Clips", "Del corte al cobro: mueve cada clip según avanza"],
   ["calendario", "▦", "Calendario", "Qué publica cada cuenta cada día de la semana"],
   ["numeros", "Σ", "Números", "Vistas y euros por día, qué funciona, proyección y exportar"],
@@ -351,9 +351,30 @@ function vistaPanel() {
 function vistaCampanas() {
   acciones([["nueva-camp", "+ Nueva campaña", "prim"]]);
   $("#nueva-camp").onclick = () => editarCampana();
-  const orden = { porunirte: 0, activa: 1, pausada: 2, terminada: 3 };
-  const lista = [...D.campanas].sort((a, b) => (orden[a.estado] ?? 3) - (orden[b.estado] ?? 3));
-  $("#contenido").innerHTML = lista.length
+  const orden = { activa: 0, pausada: 1, terminada: 2 };
+  // Las propuestas (piloto automático o IA) van aparte: no te has unido a ellas
+  const propuestas = D.campanas.filter((c) => c.estado === "porunirte");
+  const lista = D.campanas.filter((c) => c.estado !== "porunirte").sort((a, b) => (orden[a.estado] ?? 3) - (orden[b.estado] ?? 3));
+  const bloquePropuestas = propuestas.length
+    ? `<h2 style="margin-top:0">Propuestas: aún no te has unido (${propuestas.length})</h2>
+      <p class="peq" style="margin-top:0">Las ha propuesto el piloto automático o la IA con los datos del Radar. Mira su informe y, si te convence, únete en su plataforma y pulsa «Ya me he unido». Si no, descártala y no volverá a aparecer.</p>
+      ${propuestas
+        .map((c) => {
+          const r = c.radarId && D.radar?.items?.find((x) => x.id === c.radarId);
+          const v = r ? veredicto(r) : null;
+          return `<div class="tarjeta" style="margin-bottom:10px;border-style:dashed"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <div style="flex:1;min-width:220px"><b>${esc(c.nombre)}</b> <span class="chip cian">Propuesta</span>${v ? ` <span class="chip ${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>` : ""}
+            <div class="peq">${esc(c.plataforma || "")} · ${fmtMon(c.cpm, c.moneda)} por 1.000 vistas${c.minVistas ? ` · cobra desde ${fmtNum(c.minVistas)} vistas` : ""}${c.cuentaSugerida && cuenta(c.cuentaSugerida) ? ` · para ${esc(cuenta(c.cuentaSugerida).usuario)}` : ""}</div></div>
+            ${r ? `<button class="btn peq" data-informe="${c.radarId}">Informe</button>` : ""}
+            ${c.enlace ? `<a class="btn peq" href="${esc(c.enlace)}" target="_blank">Abrir ↗</a>` : ""}
+            <button class="btn peq prim" data-unido="${c.id}">Ya me he unido</button>
+            <button class="btn peq peligro" data-descartar="${c.id}">Descartar</button>
+          </div></div>`;
+        })
+        .join("")}
+      <h2>Campañas a las que te has unido</h2>`
+    : "";
+  $("#contenido").innerHTML = bloquePropuestas + (lista.length
     ? `<table><thead><tr><th>Campaña</th><th>Plataforma</th><th class="num">Tarifa / 1.000</th><th>Presupuesto gastado</th><th class="num">Clips</th><th class="num">Vistas</th><th class="num">Estimado</th><th>Estado</th></tr></thead><tbody>
       ${lista
         .map((c) => {
@@ -369,7 +390,28 @@ function vistaCampanas() {
         })
         .join("")}</tbody></table>
       <p class="peq">El presupuesto gastado lo ves en la página de la campaña (Whop, Vyro…). Actualízalo de vez en cuando: cuando se agota, los clips dejan de cobrar.</p>`
-    : `<div class="vacio">No tienes campañas. Cuando te unas a una en Whop, Vyro u otra plataforma, apúntala aquí con su tarifa y sus reglas.<br><br><button class="btn prim" id="vacio-camp">+ Nueva campaña</button></div>`;
+    : `<div class="vacio">Aún no te has unido a ninguna campaña. Cuando te unas a una en Whop o Vyro, pulsa «Ya me he unido» en su propuesta o apúntala con «+ Nueva campaña». Las mejores las tienes en el <b>Radar</b>.<br><br><button class="btn prim" id="vacio-camp">+ Nueva campaña</button></div>`);
+  $("#contenido").querySelectorAll("[data-unido]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const c = campana(b.dataset.unido);
+        c.estado = "activa";
+        guardar();
+        aviso("Marcada como unida. Copia sus reglas en la ficha de la campaña.");
+        editarCampana(c);
+      })
+  );
+  $("#contenido").querySelectorAll("[data-descartar]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const c = campana(b.dataset.descartar);
+        if (c.radarId) (radar().descartadas ||= {})[c.radarId] = hoyISO();
+        D.campanas = D.campanas.filter((x) => x.id !== c.id);
+        guardar();
+        aviso("Descartada: el piloto no volverá a proponerla");
+        vistaCampanas();
+      })
+  );
   $("#vacio-camp") && ($("#vacio-camp").onclick = () => editarCampana());
   $("#contenido").querySelectorAll("tr[data-id]").forEach((tr) => (tr.onclick = () => editarCampana(campana(tr.dataset.id))));
   $("#contenido").querySelectorAll("[data-informe]").forEach((b) => (b.onclick = (e) => (e.stopPropagation(), abrirInforme(b.dataset.informe))));

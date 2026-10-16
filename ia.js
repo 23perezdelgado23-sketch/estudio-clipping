@@ -344,7 +344,7 @@ Reglas: usa solo los datos que te doy; si un dato no está, dilo y no lo invente
         });
       const candidatas = R.items
         .map(evaluar)
-        .filter((c) => !D.campanas.some((k) => k.radarId === c.id) && !c.bloqueada)
+        .filter((c) => !D.campanas.some((k) => k.radarId === c.id) && !c.bloqueada && !(R.descartadas || {})[c.id])
         .sort((a, b) => b.puntos - a.puntos)
         .slice(0, 25)
         .map((c) => ({ ...datosCampana(c), puntuacion_app: c.puntos }));
