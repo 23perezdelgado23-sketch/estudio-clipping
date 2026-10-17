@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.4.1";
+const VERSION_APP = "4.4.2";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -1374,7 +1374,8 @@ function vistaAjustes() {
       if (!d) return;
       if (!d.clips || !d.campanas) return aviso("Ese archivo no es una copia de Estudio Clipping");
       if (!confirm("Esto sustituye todos tus datos actuales por los de la copia. ¿Seguir?")) return;
-      D = { ...VACIO(), ...d };
+      // Igual que al sincronizar: los ajustes que falten en la copia toman su valor por defecto
+      aplicarDatos(d);
       guardar();
       ir("panel");
       aviso("Copia importada");

@@ -131,3 +131,14 @@ body { height: 100dvh; overscroll-behavior: none; -webkit-tap-highlight-color: t
   .chat-caja textarea { min-height: 44px; max-height: 120px; }
   .chat-m { max-width: 92%; }
 }
+/* Las ventanas y los avisos van por encima de la barra de abajo (antes la barra tapaba la parte baja de las ventanas) */
+.modal { z-index: 30; }
+.aviso { z-index: 40; }
+/* Formularios a una columna que nunca se ensancha más que la pantalla (los desplegables con textos largos la empujaban) */
+@media (max-width: 760px) {
+  .form, .checks, .dos, .mesa { grid-template-columns: minmax(0, 1fr); }
+  .form > *, .dos > *, .mesa > * { min-width: 0; }
+  input, select, textarea { max-width: 100%; min-width: 0; }
+  select { text-overflow: ellipsis; }
+  #contenido .btn, #modal-caja .btn { max-width: 100%; white-space: normal; }
+}

@@ -130,7 +130,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .clip .chk { font-size: 11px; color: var(--suave); margin-top: 6px; }
 
 /* Formularios */
-.form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; }
+.form > * { min-width: 0; }
 .form .ancho { grid-column: 1 / -1; }
 label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--suave); }
 input, select, textarea {
