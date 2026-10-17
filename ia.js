@@ -570,6 +570,38 @@ Reglas: usa solo los datos que te doy; si un dato no está, dilo y no lo invente
   };
 })();
 
+// Formato básico de las respuestas (Markdown): primero se escapa el texto y después se aplican negritas, listas y tablas
+function formatoIA(texto) {
+  const lineas = esc(texto).split("\n");
+  const enLinea = (t) => t.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  const celdas = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => enLinea(c.trim()));
+  let html = "";
+  for (let i = 0; i < lineas.length; i++) {
+    const l = lineas[i];
+    if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|?\s*:?-{2,}/.test(lineas[i + 1] || "")) {
+      const cab = celdas(l);
+      i += 2;
+      const filas = [];
+      while (i < lineas.length && /^\s*\|.*\|\s*$/.test(lineas[i])) filas.push(celdas(lineas[i++]));
+      i--;
+      html += `<div class="ia-tabla"><table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${filas.map((f) => `<tr>${f.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    } else if (/^\s*[-*•]\s+/.test(l)) {
+      const items = [];
+      while (i < lineas.length && /^\s*[-*•]\s+/.test(lineas[i])) items.push(enLinea(lineas[i++].replace(/^\s*[-*•]\s+/, "")));
+      i--;
+      html += `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+    } else if (/^\s*\d+[.)]\s+/.test(l)) {
+      const items = [];
+      while (i < lineas.length && /^\s*\d+[.)]\s+/.test(lineas[i])) items.push(enLinea(lineas[i++].replace(/^\s*\d+[.)]\s+/, "")));
+      i--;
+      html += `<ol>${items.map((x) => `<li>${x}</li>`).join("")}</ol>`;
+    } else if (/^#{1,4}\s+/.test(l)) html += `<p><b>${enLinea(l.replace(/^#{1,4}\s+/, ""))}</b></p>`;
+    else if (/^\s*(-{3,}|\*{3,})\s*$/.test(l)) html += "<hr>";
+    else if (l.trim()) html += `<p>${enLinea(l)}</p>`;
+  }
+  return html;
+}
+
 // ---------- Sección Asistente IA ----------
 function vistaAsistente() {
   acciones(ia.chat.length ? [["chat-nuevo", "Nueva conversación"]] : []);
@@ -581,7 +613,7 @@ function vistaAsistente() {
     <div class="chat">
       ${
         ia.chat.length
-          ? ia.chat.map((m) => `<div class="chat-m ${m.role === "user" ? "yo" : "ia"} ${m.error ? "error" : ""}">${esc(m.content).replace(/\n/g, "<br>")}${m.role === "assistant" && !m.error ? `<div class="peq" style="margin-top:6px">${esc(m.modelo || "")}${m.coste != null ? ` · ≈ ${m.coste < 0.01 ? "<1 céntimo" : m.coste.toFixed(2) + " $"}` : ""}</div>` : ""}</div>`).join("")
+          ? ia.chat.map((m) => `<div class="chat-m ${m.role === "user" ? "yo" : "ia"} ${m.error ? "error" : ""}">${m.role === "assistant" && !m.error ? formatoIA(m.content) : esc(m.content).replace(/\n/g, "<br>")}${m.role === "assistant" && !m.error ? `<div class="peq" style="margin-top:6px">${esc(m.modelo || "")}${m.coste != null ? ` · ≈ ${m.coste < 0.01 ? "<1 céntimo" : m.coste.toFixed(2) + " $"}` : ""}</div>` : ""}</div>`).join("")
           : `<div class="vacio">Pregúntale lo que quieras sobre clipping, tus campañas o tus números. Conoce tus cuentas, tus campañas, tus vistas y las mejores campañas del radar.<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px">${sugerencias.map((s) => `<button class="btn peq" data-sug="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`
       }
       ${pendiente ? `<div class="chat-m ia ia-cargando">✨ Pensando…</div>` : ""}
@@ -593,7 +625,13 @@ function vistaAsistente() {
     if (t) ia.preguntar(t, $("#chat-zona"));
   };
   $("#chat-enviar").onclick = enviar;
-  $("#chat-txt").onkeydown = (e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), enviar());
+  // Ojo: si un onkeydown devuelve false, el navegador descarta la tecla. Por eso va entre llaves.
+  $("#chat-txt").onkeydown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !window.estudio.tactil) {
+      e.preventDefault();
+      enviar();
+    }
+  };
   $("#contenido").querySelectorAll("[data-sug]").forEach((b) => (b.onclick = () => ia.preguntar(b.dataset.sug, $("#chat-zona"))));
   const c = $("#contenido");
   c.scrollTop = c.scrollHeight;

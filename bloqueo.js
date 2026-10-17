@@ -146,7 +146,10 @@
       aviso("Código quitado. Puedes poner uno nuevo en Ajustes");
     };
     caja.querySelector("#bloq-ok").onclick = enviar;
-    campo.onkeydown = (e) => (e.stopPropagation(), e.key === "Enter" && enviar());
+    campo.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") enviar();
+    };
   }
 
   // Pide un código nuevo dos veces y lo guarda

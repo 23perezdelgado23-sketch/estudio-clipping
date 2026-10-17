@@ -589,3 +589,13 @@ input:focus, select:focus, textarea:focus { border-color: rgba(139, 92, 255, 0.7
 .bloq-icono { border-radius: 16px; box-shadow: var(--brillo-primario); }
 .bloq-puntos span.lleno { background: var(--primario) !important; border-color: var(--primario) !important; }
 .bloq-teclado button:active { background: var(--degradado) !important; border-color: transparent !important; }
+
+/* Asistente: respuestas con formato */
+.chat-m p { margin: 0 0 8px; }
+.chat-m p:last-child { margin-bottom: 0; }
+.chat-m ul, .chat-m ol { margin: 4px 0 8px; padding-left: 20px; }
+.chat-m hr { border: 0; border-top: 1px solid var(--borde); margin: 10px 0; }
+.ia-tabla { overflow-x: auto; margin: 6px 0 10px; }
+.ia-tabla table { display: table; border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.ia-tabla th, .ia-tabla td { border: 1px solid var(--borde); padding: 6px 8px; text-align: left; white-space: nowrap; }
+.ia-tabla th { background: rgba(139, 92, 255, 0.12); }

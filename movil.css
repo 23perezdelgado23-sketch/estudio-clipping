@@ -124,3 +124,10 @@ body { height: 100dvh; overscroll-behavior: none; -webkit-tap-highlight-color: t
   .lateral { background: rgba(8, 8, 14, 0.8); }
 }
 @media (max-width: 760px) { .usuario { display: none; } }
+/* Asistente en el iPhone: la caja de escribir fija justo encima de la barra de abajo */
+@media (max-width: 760px) {
+  .chat { padding-bottom: 96px; }
+  .chat-caja { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 61px); margin: 0; padding: 8px 16px; z-index: 14; background: rgba(9, 9, 15, 0.96); border-top: 1px solid var(--borde); max-width: none; }
+  .chat-caja textarea { min-height: 44px; max-height: 120px; }
+  .chat-m { max-width: 92%; }
+}
