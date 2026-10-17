@@ -1355,7 +1355,7 @@ function vistaAjustes() {
         <button class="btn peligro" id="aj-borrar">Borrar todo</button>
       </div>
     </div>
-    <p class="peq">Estudio Clipping 4.2 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
+    <p class="peq">Estudio Clipping 4.3 · Todo funciona sin internet, salvo los enlaces que abras, la sincronización y el radar.</p>`;
   $("#aj-guardar").onclick = () => {
     const f = leerForm($("#contenido"));
     const num = (x) => (x === "" ? "" : n(x));
@@ -1431,13 +1431,13 @@ const VISTAS = {
     if (guardados) guardar();
   }
   if (!guardados) guardar();
-  // Un aviso puede abrir la app en un apartado concreto (por ejemplo «#radar»)
-  const pedido = location.hash.slice(1);
-  ir(SECCIONES.some(([id]) => id === pedido) ? pedido : progresoPlan().pct < 100 ? "empieza" : "panel");
-  window.addEventListener("hashchange", () => {
-    const p = location.hash.slice(1);
-    if (SECCIONES.some(([id]) => id === p)) ir(p);
-  });
+  // Un aviso puede abrir la app en un apartado concreto («#radar», o «#informe» para el informe semanal de Números)
+  const irEnlace = (p) => {
+    if (p === "informe") return (tabNumeros = "informe"), ir("numeros"), true;
+    return SECCIONES.some(([id]) => id === p) && (ir(p), true);
+  };
+  if (!irEnlace(location.hash.slice(1))) ir(progresoPlan().pct < 100 ? "empieza" : "panel");
+  window.addEventListener("hashchange", () => irEnlace(location.hash.slice(1)));
   window.nube && nube.iniciar();
   // En el Mac, el radar se lee solo si la última lectura tiene más de 6 horas (y se revisa cada 30 minutos)
   if (window.estudio.radar) {

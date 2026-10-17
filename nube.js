@@ -241,6 +241,7 @@
       const [f] = await apiTabla("radar_servidor", "GET", null, "select=contenido&id=eq.1");
       return f?.contenido || null;
     },
+    informes: () => apiTabla("informes", "GET", null, "select=semana,contenido,modelo,coste_usd,creado&order=semana.desc&limit=12"),
     correo: () => (configurada && sesion() ? sesion().email : null),
     // Para el bloqueo con código: comprueba la contraseña de la cuenta sin tocar la sesión guardada
     async comprobarClave(password) {

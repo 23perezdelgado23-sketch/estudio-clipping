@@ -84,12 +84,13 @@ function vistaNumeros() {
     ["resumen", "Resumen"],
     ["rankings", "Qué funciona"],
     ["evolucion", "Evolución"],
+    ["informe", "Informe semanal"],
     ["consejos", "✨ Consejos IA"],
     ["exportar", "Exportar"],
   ];
   $("#contenido").innerHTML = `<div class="pestanas">${tabs.map(([id, t]) => `<button class="${id === tabNumeros ? "activo" : ""}" data-tab="${id}">${t}</button>`).join("")}</div><div id="num-cuerpo"></div>`;
   $("#contenido").querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => ((tabNumeros = b.dataset.tab), vistaNumeros())));
-  ({ actualizar: numActualizar, resumen: numResumen, rankings: numRankings, evolucion: numEvolucion, consejos: numConsejos, exportar: numExportar })[tabNumeros]();
+  ({ actualizar: numActualizar, resumen: numResumen, rankings: numRankings, evolucion: numEvolucion, informe: numInforme, consejos: numConsejos, exportar: numExportar })[tabNumeros]();
 }
 
 const selectorPeriodo = () =>
@@ -290,6 +291,59 @@ function numConsejos() {
   $("#num-cuerpo").innerHTML = `<div class="tarjeta">La IA estudia tus clips publicados (cuenta, campaña, gancho, duración, hora, interacción y minutos de edición) y te dice qué funciona, qué no y qué hacer esta semana. Solo usa tus datos.</div>
     <button class="btn prim" id="num-ia" style="margin-top:12px">✨ Analizar mis números</button><div id="num-ia-res" style="margin-top:12px"></div>`;
   $("#num-ia").onclick = () => ia.consejos($("#num-ia-res"));
+}
+
+// Informe semanal: lo prepara el servidor cada lunes con la IA (con tus datos reales) y te avisa al móvil
+let informeElegido = "";
+async function numInforme() {
+  const cuerpo = $("#num-cuerpo");
+  if (!window.nube || !nube.correo())
+    return (cuerpo.innerHTML = `<div class="tarjeta">El informe semanal lo prepara el servidor cada lunes. Entra con tu cuenta en <b>Ajustes → Sincronización</b> para verlo.</div>`);
+  cuerpo.innerHTML = `<p class="peq">Cargando informes…</p>`;
+  let lista = [];
+  try {
+    lista = await nube.informes();
+  } catch (e) {
+    return (cuerpo.innerHTML = `<div class="tarjeta">No se han podido cargar: ${esc(e.message)}</div>`);
+  }
+  const fecha = (f) => new Date(f + "T12:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+  const inf = lista.find((x) => x.semana === informeElegido) || lista[0];
+  const c = inf?.contenido;
+  const col = { alta: "rosa", media: "ambar", baja: "" };
+  cuerpo.innerHTML = `
+    <div class="tarjeta">Cada <b>lunes por la mañana</b> el servidor estudia con IA tu semana anterior (cuentas, clips, vistas, seguidores, campañas, cobros y lo que hizo el piloto automático) y te avisa al móvil. Solo usa tus datos: lo que falta, lo dice.
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        ${lista.length > 1 ? `<select id="inf-semana">${lista.map((x) => `<option value="${x.semana}" ${x === inf ? "selected" : ""}>Semana del ${fecha(x.semana)}</option>`).join("")}</select>` : ""}
+        <button class="btn" id="inf-ya">Prepararlo ahora</button>
+      </div>
+    </div>
+    ${
+      !c
+        ? `<div class="vacio" style="margin-top:14px">Aún no hay informes. El primero llegará el lunes, o pulsa <b>Prepararlo ahora</b>.</div>`
+        : `<div class="tarjeta ia-res" style="margin-top:14px">
+        <div class="peq">Semana del ${fecha(c.semana.desde)} al ${fecha(c.semana.hasta)}</div>
+        <h2 style="margin:6px 0 10px">${esc(c.titular)}</h2>
+        <p>${esc(c.resumen)}</p>
+        ${c.cifras.length ? `<div class="rejilla kpis" style="margin:12px 0">${c.cifras.map((x) => `<div class="kpi"><div class="et">${esc(x.dato)}</div><div class="val" style="font-size:20px">${esc(x.valor)}</div></div>`).join("")}</div>` : ""}
+        <div class="rejilla dos"><div><b>Va bien</b><ul>${c.bien.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>—</li>"}</ul></div><div><b>A mejorar</b><ul>${c.mejorar.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>—</li>"}</ul></div></div>
+        <b>Esta semana</b>${c.acciones.map((a) => `<div class="ia-item"><span class="chip ${col[a.prioridad] || ""}">${esc(a.prioridad)}</span><div style="flex:1"><b>${esc(a.accion)}</b><div class="peq">${esc(a.por_que)}</div></div></div>`).join("")}
+        ${c.faltan_datos.length ? `<details class="plegable"><summary>Datos que le faltaban a la IA</summary><ul class="peq">${c.faltan_datos.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+        <p class="peq" style="margin-top:8px">✨ ${esc(inf.modelo || "")}${inf.coste_usd != null ? ` · coste ≈ ${Number(inf.coste_usd) < 0.01 ? "menos de 1 céntimo" : Number(inf.coste_usd).toFixed(2) + " $"}` : ""} · preparado el ${new Date(inf.creado).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}. Revisa siempre lo que propone.</p>
+      </div>`
+    }`;
+  $("#inf-semana") && ($("#inf-semana").onchange = (e) => ((informeElegido = e.target.value), numInforme()));
+  $("#inf-ya").onclick = async () => {
+    $("#inf-ya").disabled = true;
+    $("#inf-ya").textContent = "Preparando (unos 30 segundos)…";
+    try {
+      await nube.funcion("radar", { informe: true });
+      informeElegido = "";
+      aviso("Informe preparado");
+    } catch (e) {
+      aviso("No se ha podido preparar: " + e.message);
+    }
+    if (tabNumeros === "informe" && seccion === "numeros") numInforme();
+  };
 }
 
 // 6. Exportar a CSV (se abre en Excel o Numbers)
