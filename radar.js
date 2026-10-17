@@ -242,7 +242,11 @@ function vistaRadar() {
   const cabecera = R.actualizado
     ? `<p class="peq" style="margin-top:0">Datos reales de los listados públicos de Whop y Vyro · leídos el <b>${new Date(R.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</b>${R.total ? ` · ${R.total} campañas de clipping que pagan en TikTok` : ""}. ${
         servidorRadar() ? "El servidor lo lee solo cada 3 horas, aunque el Mac esté apagado." : esMac ? "Se actualiza solo cada 6 horas mientras la app está abierta." : "Entra con tu cuenta en Ajustes para que se actualice solo."
-      }</p>${R.errores?.length ? `<div class="tarjeta" style="border-color:var(--ambar)">⚠ ${esc(R.errores.join(" · "))}</div>` : ""}`
+      }</p>${R.errores?.length ? `<div class="tarjeta" style="border-color:var(--ambar)">⚠ ${esc(R.errores.join(" · "))}</div>` : ""}${
+        servidorRadar() && Date.now() - Date.parse(R.actualizado) > 7 * 36e5
+          ? `<div class="tarjeta" style="border-color:var(--ambar)">⚠ La última lectura es de hace ${Math.round((Date.now() - Date.parse(R.actualizado)) / 36e5)} horas y el servidor lee cada 3. Pulsa <b>Actualizar ahora</b>; si sigue igual, avísame.</div>`
+          : ""
+      }`
     : `<div class="vacio">${puede ? "Pulsa <b>Actualizar ahora</b> para leer las campañas reales de Whop y Vyro." : "Entra con tu cuenta en <b>Ajustes → Sincronización</b>: el servidor lee Whop y Vyro cada 3 horas y aquí aparecerán las campañas."}</div>`;
 
   $("#contenido").innerHTML = `
@@ -514,9 +518,12 @@ function pilotoAutomatico(itemsTodos) {
   if (D.ajustes.piloto === false) return [];
   const cambios = [];
   const porId = Object.fromEntries(itemsTodos.map((c) => [c.id, c]));
+  // Si de una plataforma no ha llegado ninguna campaña es un fallo de lectura, no que se hayan acabado todas
+  const leidas = new Set(itemsTodos.map((c) => c.plat));
   D.campanas.forEach((k) => {
     if (!k.radarId || !["activa", "porunirte"].includes(k.estado)) return;
     const c = porId[k.radarId];
+    if (!c && !leidas.has(k.plataforma)) return;
     if (!c) {
       k.estado = "terminada";
       cambios.push(`Terminada «${k.nombre}»: ya no aparece en ${k.plataforma} (acabada o sin presupuesto)`);

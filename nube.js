@@ -263,6 +263,25 @@
 
     iniciar() {
       if (!configurada) return;
+      // Registro de errores: lo que falle en este dispositivo queda apuntado en la nube para poder arreglarlo
+      // (sin datos tuyos: solo el mensaje, el apartado, la versión y el tipo de dispositivo). Máximo 10 por sesión.
+      const vistos = new Set();
+      const apuntar = (mensaje, detalle) => {
+        mensaje = String(mensaje || "Error desconocido").slice(0, 500);
+        if (!sesion() || vistos.has(mensaje) || vistos.size >= 10 || /ResizeObserver loop/.test(mensaje)) return;
+        vistos.add(mensaje);
+        apiTabla("errores", "POST", {
+          user_id: sesion().id,
+          origen: window.estudio.radar ? "mac" : "web",
+          version: typeof VERSION_APP === "string" ? VERSION_APP : "",
+          dispositivo: navigator.userAgent.slice(0, 160),
+          seccion: typeof seccion === "string" ? seccion : "",
+          mensaje,
+          detalle: String(detalle || "").slice(0, 3000),
+        }).catch(() => {});
+      };
+      window.addEventListener("error", (e) => apuntar(e.message, `${e.filename || ""}:${e.lineno || ""}:${e.colno || ""}\n${e.error?.stack || ""}`));
+      window.addEventListener("unhandledrejection", (e) => apuntar(e.reason?.message || e.reason, e.reason?.stack));
       sincronizar();
       const tranquilo = () => document.getElementById("modal").classList.contains("oculto");
       document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && tranquilo() && sincronizar());
