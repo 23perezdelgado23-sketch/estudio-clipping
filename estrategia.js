@@ -299,7 +299,7 @@ function tabNichos() {
       <table style="margin:8px 0 12px">
         <tr><td style="width:150px" class="peq">Usuario</td><td>${usuario ? `<b>${esc(usuario)}</b> ${copiar(usuario.replace(/^@/, ""))}` : '<span class="peq">Sin rellenar</span>'}${c.alternativa ? `<div class="peq">Si está cogido: ${esc(c.alternativa)}</div>` : ""}</td></tr>
         ${fila("Nombre del perfil", c.nombrePerfil)}
-        ${fila("Correo (Gmail nuevo)", c.correo, c.correo ? `<div class="peq">Si Gmail dice que está cogido, añade un número: ${esc(c.correo.replace("@", "1@"))}</div>` : "")}
+        ${fila("Correo (Gmail nuevo)", c.correo, c.correo ? `<div class="peq">Usa exactamente este. Si Gmail dice que está cogido, no te inventes otro: cámbialo aquí (Cambiarlos) para que la app tenga siempre el que usas.</div>` : "")}
         ${fila("Biografía", c.bio, c.bio ? `<div class="peq">${[...c.bio].length} caracteres (TikTok deja 80)</div>` : "")}
         <tr><td class="peq">Foto de perfil</td><td><div style="display:flex;gap:12px;align-items:center">${c.foto ? `<img src="${esc(c.foto)}" alt="Foto de perfil" style="width:72px;height:72px;border-radius:50%;flex:none"/>` : ""}<div>${esc(n.foto)}<div style="margin-top:6px">${c.foto ? `<button class="btn peq" data-ver-foto="${esc(c.id)}">Abrir la foto para guardarla</button>` : '<span class="peq">Sin foto: súbela en Cuentas</span>'}</div></div></div></td></tr>
       </table>
