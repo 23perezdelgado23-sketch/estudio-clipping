@@ -1,0 +1,144 @@
+/* Estudio Clipping en el móvil: se carga después de styles.css y solo cambia lo necesario para pantallas estrechas. */
+html, body { height: 100%; }
+body { height: 100dvh; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+
+@media (max-width: 760px) {
+  body { flex-direction: column; }
+
+  /* El lateral pasa a ser una barra superior con el menú en horizontal */
+  .lateral {
+    width: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--borde);
+    padding: calc(env(safe-area-inset-top) + 8px) 0 8px;
+  }
+  .marca { padding: 0 16px 8px; gap: 8px; }
+  .marca-img { width: 30px; height: 30px; margin: -2px; }
+  .marca-nombre, .marca-sub { font-size: 11px; letter-spacing: 2.5px; display: inline; }
+  .marca-sub { margin-left: 6px; }
+  .lateral-pie { display: none; }
+  nav {
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 16px 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  nav button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 7px 12px;
+    border-radius: 20px;
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    gap: 6px;
+  }
+  nav button.activo { background: var(--rosa); border-color: var(--rosa); color: #fff; box-shadow: none; }
+  nav .ico { width: auto; }
+  nav .contador { margin-left: 2px; background: rgba(255,255,255,.25); }
+
+  /* Cabecera y contenido */
+  main { min-height: 0; }
+  .cabecera { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 16px 12px; }
+  h1 { font-size: 21px; }
+  .cabecera p { font-size: 13px; }
+  .cabecera .acciones .btn { flex: 1 1 auto; }
+  #contenido { padding: 16px 16px calc(env(safe-area-inset-bottom) + 48px); -webkit-overflow-scrolling: touch; }
+
+  /* Rejillas a una columna */
+  .form, .checks, .dos, .mesa { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 12px; }
+  .kpi .val { font-size: 22px; }
+  .tablero { grid-template-columns: repeat(6, 78vw); scroll-snap-type: x mandatory; }
+  .columna { scroll-snap-align: start; min-height: 200px; }
+  .filtros input, .filtros select { min-width: 0; flex: 1 1 140px; }
+  .visor { max-height: 60vh; margin: 0 auto; }
+
+  /* Tablas: se desplazan de lado en vez de salirse de la pantalla */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  th, td { padding: 8px 10px; }
+
+  /* Ventanas emergentes a pantalla casi completa */
+  .modal { place-items: end center; }
+  .modal-caja { width: 100%; max-height: 92dvh; border-radius: 16px 16px 0 0; padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px); }
+  .modal-pie { flex-wrap: wrap; }
+
+  .aviso { bottom: calc(env(safe-area-inset-bottom) + 16px); max-width: calc(100vw - 32px); }
+  .teclas, kbd { display: none; }
+  .guia h2 { font-size: 17px; }
+}
+
+/* iOS amplía la pantalla si el texto de un campo es menor de 16 px */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea { font-size: 16px; }
+}
+
+@media (max-width: 760px) {
+  .radar-lista { grid-template-columns: 1fr; }
+  .radar-datos { grid-template-columns: repeat(2, 1fr); }
+  .num-in { width: 100px; }
+  table.cal td { min-width: 110px; }
+}
+
+/* Diseño 4.0 en el iPhone: cabecera compacta y barra inferior como en una app nativa */
+@media (max-width: 760px) {
+  .lateral { padding: calc(env(safe-area-inset-top) + 10px) 0 10px; background: rgba(8, 8, 11, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .lateral nav { display: none; }
+  .marca { padding: 0 16px; }
+  .cabecera { padding: 16px 16px 12px; }
+  .cab-icono { width: 36px; height: 36px; border-radius: 10px; }
+  h1 { font-size: 20px; }
+  #contenido { padding: 16px 16px calc(env(safe-area-inset-bottom) + 96px); }
+  #barra-movil {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    background: rgba(10, 10, 14, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--borde);
+    padding: 6px 4px calc(env(safe-area-inset-bottom) + 4px);
+  }
+  #barra-movil button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; color: #7d7d8c; font-size: 10.5px; font-weight: 600; padding: 4px 0; position: relative; }
+  #barra-movil button .icono { width: 23px; height: 23px; }
+  #barra-movil button.activo { color: var(--rosa); }
+  #barra-movil .contador { position: absolute; top: 0; left: calc(50% + 6px); font-size: 9.5px !important; padding: 0 5px !important; min-width: 16px; }
+  .modal-caja { padding: 20px 16px calc(env(safe-area-inset-bottom) + 18px); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpi .val { font-size: 21px; }
+  .saludo-t { font-size: 18px; }
+}
+@media (max-width: 760px) {
+  #barra-movil { background: rgba(9, 9, 15, 0.86); }
+  #barra-movil button.activo { color: var(--primario-claro); }
+  #barra-movil button.activo .icono { filter: drop-shadow(0 0 8px rgba(139, 92, 255, 0.6)); }
+  .hero { padding: 20px; border-radius: 18px; }
+  .hero-t { font-size: 20px; }
+  .lateral { background: rgba(8, 8, 14, 0.8); }
+}
+@media (max-width: 760px) { .usuario { display: none; } }
+/* Asistente en el iPhone: la caja de escribir fija justo encima de la barra de abajo */
+@media (max-width: 760px) {
+  .chat { padding-bottom: 96px; }
+  .chat-caja { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 61px); margin: 0; padding: 8px 16px; z-index: 14; background: rgba(9, 9, 15, 0.96); border-top: 1px solid var(--borde); max-width: none; }
+  .chat-caja textarea { min-height: 44px; max-height: 120px; }
+  .chat-m { max-width: 92%; }
+}
+/* Las ventanas y los avisos van por encima de la barra de abajo (antes la barra tapaba la parte baja de las ventanas) */
+.modal { z-index: 30; }
+.aviso { z-index: 40; }
+/* Formularios a una columna que nunca se ensancha más que la pantalla (los desplegables con textos largos la empujaban) */
+@media (max-width: 760px) {
+  .form, .checks, .dos, .mesa { grid-template-columns: minmax(0, 1fr); }
+  .form > *, .dos > *, .mesa > * { min-width: 0; }
+  input, select, textarea { max-width: 100%; min-width: 0; }
+  select { text-overflow: ellipsis; }
+  #contenido .btn, #modal-caja .btn { max-width: 100%; white-space: normal; }
+}

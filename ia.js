@@ -1,0 +1,733 @@
+"use strict";
+// Herramientas de IA (Claude, SDK oficial de Anthropic empaquetado en vendor/anthropic.js).
+// La clave de la API se guarda solo en este dispositivo (no se sincroniza) y cada consulta la pagas tú en tu cuenta de Anthropic.
+// La IA solo trabaja con los datos que le pasa la app: se le pide que no invente cifras.
+
+(() => {
+  const LS = { clave: "ia:clave", corto: "ia:modeloCorto", largo: "ia:modeloLargo", lista: "ia:modelos", gasto: "ia:gasto", viejo: "ia:modelo" };
+  const ls = {
+    get: (k) => {
+      try {
+        return localStorage.getItem(k);
+      } catch {
+        return null;
+      }
+    },
+    set: (k, v) => {
+      try {
+        v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v);
+      } catch {}
+    },
+  };
+  // Modelos conocidos con su precio por millón de tokens (entrada / salida), tarifa oficial de Anthropic.
+  // Los modelos nuevos que publique Anthropic aparecen solos al leer la lista (Ajustes); de esos la app no sabe el precio.
+  const MODELOS = {
+    "claude-opus-5-5": { nombre: "Claude Opus 5.5", nota: "la mejor calidad", entrada: 4, salida: 20, fallback: true },
+    "claude-sonnet-5-5": { nombre: "Claude Sonnet 5.5", nota: "muy buena y a mitad de precio", entrada: 2, salida: 10, fallback: true },
+    "claude-haiku-5-5": { nombre: "Claude Haiku 5.5", nota: "la más barata", entrada: 0.1, salida: 0.5, fallback: false },
+  };
+  const POR_DEFECTO = { corto: "claude-sonnet-5-5", largo: "claude-opus-5-5" };
+  const listaLeida = () => {
+    try {
+      return JSON.parse(ls.get(LS.lista)) || null;
+    } catch {
+      return null;
+    }
+  };
+  const disponibles = () => {
+    const l = listaLeida();
+    const ids = new Set([...Object.keys(MODELOS), ...((l && l.modelos) || []).map((m) => m.id)]);
+    // Si ya se ha leído la lista de Anthropic, solo se ofrecen los que existen de verdad
+    return [...ids].filter((id) => !l || l.modelos.some((m) => m.id === id));
+  };
+  const nombreModelo = (id) => MODELOS[id]?.nombre || listaLeida()?.modelos.find((m) => m.id === id)?.nombre || id;
+  // tipo: «corto» (ganchos, Asistente) o «largo» (momentos, agente, informes, consejos)
+  const modelo = (tipo = "largo") => ls.get(tipo === "corto" ? LS.corto : LS.largo) || (tipo === "largo" && ls.get(LS.viejo)) || POR_DEFECTO[tipo];
+  const clave = () => ls.get(LS.clave) || "";
+
+  const BASE = `Eres el asistente de Estudio Clipping, una app para ganar dinero haciendo clipping en TikTok con permiso (campañas de Whop Content Rewards y Vyro, o acuerdos con creadores). Escribes en español de España, claro y directo, para alguien que empieza.
+Reglas: usa solo los datos que te doy; si un dato no está, dilo y no lo inventes. No prometas ganancias. No recomiendes comprar vistas, bots, promoción pagada ni subir contenido sin permiso: está prohibido en las campañas. Cuando des cifras, di de dónde salen.`;
+
+  function cliente() {
+    if (!clave()) throw new Error("Falta tu clave de la API de Claude (Ajustes → Inteligencia artificial)");
+    return new window.AnthropicSDK({ apiKey: clave(), dangerouslyAllowBrowser: true });
+  }
+
+  // Lee de Anthropic los modelos que puede usar tu clave (los nuevos aparecen solos; los retirados desaparecen)
+  async function leerModelos() {
+    const modelos = [];
+    for await (const m of cliente().models.list()) modelos.push({ id: m.id, nombre: m.display_name || m.id, creado: m.created_at || "" });
+    ls.set(LS.lista, JSON.stringify({ leida: new Date().toISOString(), modelos }));
+    return modelos;
+  }
+
+  const familia = (id) => (id.match(/opus|sonnet|haiku|fable|mythos/) || [""])[0];
+
+  // Si un modelo ya no existe: cambia al más nuevo de la misma familia (o a Opus) y avisa
+  async function renovarModelo(tipo, fallido) {
+    const modelos = (await leerModelos()).filter((m) => m.id !== fallido && /^claude-/.test(m.id));
+    const recientes = (f) => modelos.filter((m) => familia(m.id) === f).sort((a, b) => String(b.creado).localeCompare(String(a.creado)));
+    const nuevo = recientes(familia(fallido))[0] || recientes("opus")[0] || recientes("sonnet")[0];
+    if (!nuevo) throw new Error(`El modelo ${fallido} ya no está disponible y no se ha encontrado otro. Revisa Ajustes → Inteligencia artificial.`);
+    ls.set(tipo === "corto" ? LS.corto : LS.largo, nuevo.id);
+    aviso(`El modelo ${nombreModelo(fallido)} ya no está disponible: he cambiado a ${nuevo.nombre}`);
+    return nuevo.id;
+  }
+
+  const esModeloRetirado = (e) => e instanceof window.AnthropicSDK.NotFoundError && /model/i.test(e.message || "");
+
+  function apuntarGasto(id, uso) {
+    const m = MODELOS[id];
+    if (!m) return null; // modelo nuevo: la app no conoce su precio
+    const usd = ((uso.input_tokens || 0) * m.entrada + (uso.output_tokens || 0) * m.salida) / 1e6;
+    const g = JSON.parse(ls.get(LS.gasto) || '{"mes":"","total":0}');
+    const mes = hoyISO().slice(0, 7);
+    if (g.mes !== mes) (g.mes = mes), (g.total = 0);
+    g.total += usd;
+    ls.set(LS.gasto, JSON.stringify(g));
+    return usd;
+  }
+
+  // Una llamada a la API. Si el modelo se ha retirado, renueva el modelo y lo intenta una vez más.
+  async function llamar(tipo, peticion, reintento = true) {
+    const id = modelo(tipo);
+    try {
+      const p = { ...peticion, model: id };
+      const r = MODELOS[id]?.fallback
+        ? await cliente().beta.messages.create({ ...p, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" })
+        : await cliente().messages.create(p);
+      if (r.stop_reason === "refusal") throw new Error("La IA ha rechazado esta petición");
+      if (r.stop_reason === "max_tokens") throw new Error("La respuesta era demasiado larga; prueba con menos texto");
+      return { r, coste: apuntarGasto(id, r.usage || {}), id };
+    } catch (e) {
+      if (reintento && esModeloRetirado(e)) {
+        await renovarModelo(tipo, id);
+        return llamar(tipo, peticion, false);
+      }
+      throw e;
+    }
+  }
+
+  // Llamada con salida JSON validada por la API (structured outputs)
+  async function pedirJSON(instrucciones, datos, esquema, effort = "medium", tipo = "largo") {
+    const { r, coste, id } = await llamar(tipo, {
+      max_tokens: 16000,
+      system: BASE + "\n\n" + instrucciones,
+      messages: [{ role: "user", content: typeof datos === "string" ? datos : JSON.stringify(datos, null, 1) }],
+      output_config: { effort, format: { type: "json_schema", schema: esquema } },
+    });
+    const texto = r.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+    return { datos: JSON.parse(texto), coste, id };
+  }
+
+  async function pedirTexto(instrucciones, mensajes, effort = "medium", tipo = "corto") {
+    const { r, coste, id } = await llamar(tipo, { max_tokens: 16000, system: BASE + "\n\n" + instrucciones, messages: mensajes, output_config: { effort } });
+    return { texto: r.content.filter((b) => b.type === "text").map((b) => b.text).join(""), coste, id };
+  }
+
+  // La API solo admite role y content: fuera coste, modelo y los avisos de error. Debe empezar por el usuario.
+  const historialAPI = (chat) => {
+    const h = chat.filter((m) => !m.error).slice(-20).map(({ role, content }) => ({ role, content }));
+    while (h.length && h[0].role !== "user") h.shift();
+    return h;
+  };
+
+  const traducirError = (e) => {
+    const A = window.AnthropicSDK;
+    const m = e?.message || String(e);
+    if (A && e instanceof A.AuthenticationError) return "La clave de la API no es válida. Revísala en Ajustes → Inteligencia artificial.";
+    if (A && e instanceof A.PermissionDeniedError) return "Tu clave no tiene permiso para usar este modelo. Elige otro en Ajustes → Inteligencia artificial.";
+    if (A && esModeloRetirado(e)) return "El modelo elegido no está disponible. Pulsa «Actualizar lista de modelos» en Ajustes → Inteligencia artificial.";
+    if (A && e instanceof A.RateLimitError) return "Demasiadas consultas seguidas o límite de gasto alcanzado. Espera un poco o revisa tu cuenta de Anthropic.";
+    if (A && e instanceof A.APIConnectionError) return "Sin conexión con la IA. Revisa internet.";
+    if (/credit|balance/i.test(m)) return "Tu cuenta de Anthropic no tiene saldo. Añade crédito en console.anthropic.com.";
+    return m;
+  };
+  const pie = (coste, id) =>
+    `<p class="peq" style="margin-top:8px">✨ ${esc(nombreModelo(id))} · ${coste == null ? "coste: consulta el precio de este modelo en anthropic.com/pricing" : `esta consulta ≈ ${coste < 0.01 ? "menos de 1 céntimo" : coste.toFixed(2) + " $"}`}. Revisa siempre lo que propone.</p>`;
+  const cargando = (zona, t) => (zona.innerHTML = `<div class="tarjeta ia-cargando">✨ ${t}…</div>`);
+  const fallo = (zona, e) => (zona.innerHTML = `<div class="tarjeta" style="border-color:var(--rosa)">⚠ ${esc(traducirError(e))}</div>`);
+  const sinClave = (zona) =>
+    !clave() &&
+    ((zona.innerHTML = `<div class="tarjeta" style="border-color:var(--cian)">Para usar la IA, pon tu clave de la API de Claude en <b>Ajustes → Inteligencia artificial</b> (allí te explica cómo conseguirla).</div>`), true);
+
+  // Resumen de tus números para dar contexto a la IA (solo datos reales de la app)
+  function resumenTusDatos() {
+    const pubs = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado));
+    const v = pubs.map((c) => n(c.vistas));
+    return {
+      idioma_de_tus_cuentas: IDIOMAS[idiomaObjetivo()],
+      cuentas: D.cuentas.map((a) => ({ usuario: a.usuario, nicho: a.nicho, seguidores: a.seguidores || null, estado: a.estado })),
+      clips_publicados: pubs.length,
+      vistas_media_por_clip: pubs.length ? Math.round(v.reduce((a, b) => a + b, 0) / pubs.length) : null,
+      vistas_mediana_por_clip: pubs.length ? Math.round(mediana(v)) : null,
+    };
+  }
+
+  const datosCampana = (c) => {
+    const v = veredicto(c);
+    return {
+      id: c.id,
+      nombre: c.nombre,
+      creador: c.org,
+      plataforma: c.plat,
+      idioma: IDIOMAS[c.idioma] + (c.idiomaFuente === "oficial" ? "" : " (detectado por el texto)"),
+      descripcion: c.desc,
+      categorias: c.cats,
+      tarifa_tiktok_usd_por_1000: c.tarifa,
+      vistas_minimas_para_cobrar: c.minVistas || null,
+      pago_maximo_por_clip_usd: c.maxPago || null,
+      presupuesto_usd: c.presupuesto,
+      queda_usd: Math.round(c.restante),
+      clippers: c.clippers,
+      clips_aprobados: c.aprobados ?? null,
+      vistas_totales: c.vistas ?? null,
+      vistas_media_por_clip_aprobado: c.vistasPorClip ?? null,
+      vistas_pagadas: c.vistasPagadas ?? null,
+      ganado_medio_por_clipper_usd: c.medioPorClipper ?? null,
+      vistas_ultimos_7_dias: c.ult7 ?? null,
+      vistas_7_dias_anteriores: c.prev7 ?? null,
+      vistas_mejor_semana: c.pico7 ?? null,
+      clips_aprobados_ultimos_14_dias: c.serieAprob ? c.serieAprob.slice(-14).reduce((a, b) => a + b, 0) : null,
+      mejores_ganadores: c.topGanadores || [],
+      mejores_clips: (c.topClips || []).map((t) => ({ vistas: t.vistas, titulo: t.titulo })),
+      fin: c.fin ? c.fin + (c.finEstimado ? " (estimado por su ritmo de gasto)" : " (oficial)") : null,
+      hay_que_solicitarla: c.solicitud,
+      bloqueada: c.bloqueada,
+      veredicto_de_la_app: v.etiqueta,
+      motivos_de_la_app: v.motivos,
+    };
+  };
+
+  window.ia = {
+    MODELOS,
+    modelo,
+    configurada: () => !!clave(),
+
+    // ---------- Ajustes ----------
+    tarjetaAjustes() {
+      const g = JSON.parse(ls.get(LS.gasto) || '{"mes":"","total":0}');
+      const l = listaLeida();
+      const opcionesModelo = (sel) =>
+        opciones(
+          disponibles().map((id) => [id, MODELOS[id] ? `${MODELOS[id].nombre} (${MODELOS[id].nota}) · ${MODELOS[id].entrada} $ / ${MODELOS[id].salida} $ por millón de tokens` : `${nombreModelo(id)} · precio en anthropic.com/pricing`]),
+          sel
+        );
+      return `<h2>Inteligencia artificial</h2>
+      <div class="tarjeta" style="max-width:720px">
+        <p class="peq" style="margin-top:0">Las herramientas ✨ usan Claude, la IA de Anthropic, con <b>tu propia clave</b>. Cómo conseguirla: entra en <b>console.anthropic.com</b>, crea una cuenta, añade algo de saldo (Billing), pon un límite de gasto (Limits) y en <b>API Keys</b> pulsa «Create Key». Cópiala y pégala aquí. La clave se guarda <b>solo en este dispositivo</b> (no se sincroniza): ponla también en el otro.</p>
+        <div class="form">
+          <label class="ancho">Clave de la API de Claude<input id="ia-clave" type="password" autocomplete="off" placeholder="sk-ant-…" value="${esc(clave())}" /></label>
+          <label class="ancho">Modelo para tareas rápidas <span class="peq">(ganchos y texto de un clip, Asistente)</span><select id="ia-corto">${opcionesModelo(modelo("corto"))}</select></label>
+          <label class="ancho">Modelo para tareas importantes <span class="peq">(momentos de una transcripción, agente de campañas, informes, consejos)</span><select id="ia-largo">${opcionesModelo(modelo("largo"))}</select></label>
+        </div>
+        <p class="peq">${l ? `Lista de modelos leída de Anthropic el ${new Date(l.leida).toLocaleDateString("es-ES")}: solo aparecen los que existen ahora.` : "Al probar la conexión, la app lee de Anthropic los modelos que existen ahora (los nuevos aparecerán solos)."} Si un modelo se retira, la app cambia sola al más nuevo de su misma familia y te avisa.</p>
+        <p class="peq">Gastado este mes en este dispositivo (estimado, solo modelos con precio conocido): <b>${(g.mes === hoyISO().slice(0, 7) ? g.total : 0).toFixed(2)} $</b>.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn prim" id="ia-guardar">Guardar</button><button class="btn" id="ia-probar">Probar la conexión</button><button class="btn" id="ia-modelos">Actualizar lista de modelos</button>${clave() ? `<button class="btn peligro" id="ia-borrar">Quitar la clave</button>` : ""}</div>
+        <div id="ia-prueba"></div>
+      </div>`;
+    },
+    montarAjustes() {
+      const $$ = (id) => document.getElementById(id);
+      if (!$$("ia-guardar")) return;
+      const guardarCampos = () => {
+        ls.set(LS.clave, $$("ia-clave").value.trim() || null);
+        ls.set(LS.corto, $$("ia-corto").value);
+        ls.set(LS.largo, $$("ia-largo").value);
+        ls.set(LS.viejo, null);
+      };
+      $$("ia-guardar").onclick = () => {
+        guardarCampos();
+        aviso("Ajustes de IA guardados");
+        vistaAjustes();
+      };
+      $$("ia-borrar") && ($$("ia-borrar").onclick = () => (ls.set(LS.clave, null), vistaAjustes(), aviso("Clave quitada")));
+      $$("ia-modelos").onclick = async () => {
+        guardarCampos();
+        const z = $$("ia-prueba");
+        if (sinClave(z)) return;
+        cargando(z, "Leyendo los modelos disponibles");
+        try {
+          const ms = await leerModelos();
+          aviso(`${ms.length} modelos disponibles`);
+          vistaAjustes();
+        } catch (e) {
+          fallo(z, e);
+        }
+      };
+      $$("ia-probar").onclick = async () => {
+        guardarCampos();
+        const z = $$("ia-prueba");
+        if (sinClave(z)) return;
+        cargando(z, "Probando");
+        try {
+          await leerModelos().catch(() => {});
+          const r = await pedirTexto("Responde solo con: «Conexión correcta».", [{ role: "user", content: "Prueba de conexión" }], "low", "corto");
+          z.innerHTML = `<div class="tarjeta" style="border-color:var(--verde)">✓ ${esc(r.texto)}</div>${pie(r.coste, r.id)}`;
+        } catch (e) {
+          fallo(z, e);
+        }
+      };
+    },
+
+    // ---------- 1. Ganchos y texto de un clip ----------
+    async ganchosClip(f, zona, alUsar) {
+      if (sinClave(zona)) return;
+      cargando(zona, "Pensando ganchos y texto para TikTok");
+      const camp = campana(f.campanaId);
+      const cta = cuenta(f.cuentaId);
+      try {
+        const { datos, coste, id } = await pedirJSON(
+          `Te paso un clip de TikTok que va a publicar un clipper. Propón 5 ganchos distintos para los primeros 1–3 segundos (texto en pantalla, máximo 10 palabras, en el idioma de la cuenta), un título corto para poner en pantalla, una descripción para TikTok con palabras que la gente buscaría y hashtags. Respeta las reglas de la campaña (mención, hashtags obligatorios, etiqueta de publicidad al principio de la descripción si la pide). No inventes datos del clip que no estén en la información.`,
+          {
+            clip: { titulo: f.titulo, de_donde_sale: f.fuente, tramo: [f.inicio, f.fin].filter(Boolean).join("–"), duracion_s: f.duracion, gancho_actual: f.gancho, descripcion_actual: f.descripcion, notas: f.notas },
+            cuenta: cta ? { usuario: cta.usuario, nicho: cta.nicho } : null,
+            campana: camp ? { nombre: camp.nombre, creador: camp.creador, reglas: camp.reglas, mencion: camp.mencion, hashtags_obligatorios: camp.hashtagsObl, etiqueta_publicidad: camp.divulgacion } : null,
+            idioma: IDIOMAS[idiomaObjetivo()],
+            ganchos_que_mejor_te_funcionan: D.ganchos
+              .map((g) => {
+                const cs = D.clips.filter((c) => (c.gancho || "").trim() === g.texto.trim() && CUENTAN_VISTAS.includes(c.estado));
+                return { texto: g.texto, usos: cs.length, media: cs.length ? Math.round(cs.reduce((s, c) => s + n(c.vistas), 0) / cs.length) : 0 };
+              })
+              .filter((g) => g.usos)
+              .sort((a, b) => b.media - a.media)
+              .slice(0, 5),
+          },
+          {
+            type: "object",
+            properties: {
+              ganchos: { type: "array", items: { type: "object", properties: { texto: { type: "string" }, por_que: { type: "string" } }, required: ["texto", "por_que"], additionalProperties: false } },
+              titulo_en_pantalla: { type: "string" },
+              descripcion: { type: "string" },
+              hashtags: { type: "array", items: { type: "string" } },
+            },
+            required: ["ganchos", "titulo_en_pantalla", "descripcion", "hashtags"],
+            additionalProperties: false,
+          },
+          "medium",
+          "corto"
+        );
+        zona.innerHTML = `<div class="tarjeta ia-res">
+          <b>Ganchos</b>${datos.ganchos.map((g, i) => `<div class="ia-item"><div style="flex:1"><div>${esc(g.texto)}</div><div class="peq">${esc(g.por_que)}</div></div><button class="btn peq" type="button" data-g="${i}">Usar</button></div>`).join("")}
+          <b style="display:block;margin-top:10px">Título en pantalla</b><div>${esc(datos.titulo_en_pantalla)}</div>
+          <b style="display:block;margin-top:10px">Descripción</b><div style="white-space:pre-wrap">${esc(datos.descripcion)}</div>
+          <div class="peq">${datos.hashtags.map(esc).join(" ")}</div>
+          <button class="btn peq prim" type="button" id="ia-usar-desc" style="margin-top:8px">Usar descripción y hashtags</button>
+        </div>${pie(coste, id)}`;
+        zona.querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => alUsar({ gancho: datos.ganchos[b.dataset.g].texto })));
+        zona.querySelector("#ia-usar-desc").onclick = () => alUsar({ descripcion: datos.descripcion, hashtags: datos.hashtags.map((h) => (h.startsWith("#") ? h : "#" + h)).join(" ") });
+      } catch (e) {
+        fallo(zona, e);
+      }
+    },
+
+    // ---------- 2. Momentos virales desde una transcripción ----------
+    async momentos(transcripcion, opciones, zona, automatico = false) {
+      if (sinClave(zona)) return;
+      if (transcripcion.trim().length < 200) return (zona.innerHTML = `<div class="tarjeta">Pega una transcripción más larga (con los tiempos, como la que da YouTube en «Mostrar transcripción»).</div>`);
+      cargando(zona, "Leyendo la transcripción y buscando los mejores momentos");
+      const camp = campana(opciones.campanaId);
+      try {
+        const { datos, coste, id } = await pedirJSON(
+          `Te paso la transcripción con tiempos de un vídeo largo (pódcast, directo, entrevista). Encuentra los ${opciones.cuantos} mejores momentos para clips verticales de TikTok de ${opciones.durMin}–${opciones.durMax} segundos: momentos que se entienden solos, con una frase fuerte al principio o un remate claro. Usa SOLO tiempos que aparezcan en la transcripción (formato mm:ss o h:mm:ss) y cita la frase exacta con la que arranca. Ordénalos de mejor a peor. Si la transcripción no tiene tiempos, dilo en «aviso» y estima por orden de aparición.
+Para cada momento escribe además, en el idioma de la cuenta: «texto_arriba», el texto corto que irá sobreimpreso arriba los primeros segundos (máximo 7 palabras, que dé ganas de quedarse, sin emojis y sin inventar nada que no se diga en el clip); «descripcion», el texto del post de TikTok (1–2 frases naturales, sin hashtags); y «hashtags», 3–5 hashtags relevantes separados por espacios. No pongas las menciones ni hashtags obligatorios de la campaña: la app los añade sola.`,
+          `Campaña: ${camp ? camp.nombre + " (" + (camp.creador || "") + "). Reglas: " + (camp.reglas || "sin reglas apuntadas") : "sin campaña"}\nIdioma de la cuenta: ${IDIOMAS[idiomaObjetivo()]}\n\nTRANSCRIPCIÓN:\n${transcripcion.slice(0, 400000)}`,
+          {
+            type: "object",
+            properties: {
+              aviso: { type: "string" },
+              momentos: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    inicio: { type: "string" },
+                    fin: { type: "string" },
+                    frase_inicial: { type: "string" },
+                    titulo: { type: "string" },
+                    gancho: { type: "string" },
+                    por_que_funciona: { type: "string" },
+                    puntuacion: { type: "integer" },
+                    texto_arriba: { type: "string" },
+                    descripcion: { type: "string" },
+                    hashtags: { type: "string" },
+                  },
+                  required: ["inicio", "fin", "frase_inicial", "titulo", "gancho", "por_que_funciona", "puntuacion", "texto_arriba", "descripcion", "hashtags"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["aviso", "momentos"],
+            additionalProperties: false,
+          },
+          "high"
+        );
+        zona.innerHTML = `${datos.aviso ? `<div class="tarjeta" style="border-color:var(--ambar)">${esc(datos.aviso)}</div>` : ""}
+          ${datos.momentos
+            .map(
+              (m, i) => `<div class="tarjeta ia-res" style="margin-top:10px"><div style="display:flex;gap:10px;align-items:flex-start">
+              <span class="radar-p ${m.puntuacion >= 7 ? "alta" : ""}" style="--p:${m.puntuacion * 10}">${m.puntuacion}</span>
+              <div style="flex:1;min-width:0"><b>${esc(m.titulo)}</b> <span class="chip cian">${esc(m.inicio)} – ${esc(m.fin)}</span>
+              <div class="peq">«${esc(m.frase_inicial)}»</div><div style="margin-top:4px">⚡ ${esc(m.gancho)}</div><div class="peq">${esc(m.por_que_funciona)}</div>${m.texto_arriba ? `<div class="peq" style="margin-top:4px">Texto arriba: <b>${esc(m.texto_arriba)}</b> · ${esc(m.hashtags || "")}</div>` : ""}</div>
+              <div style="display:flex;flex-direction:column;gap:6px">${window.fabricaLista?.() ? `<button class="btn peq prim" data-cortar="${i}">✂️ Cortar en vertical</button>` : ""}<button class="btn peq ${window.fabricaLista?.() ? "" : "prim"}" data-m="${i}">Crear clip</button></div></div></div>`
+            )
+            .join("")}${window.fabricaLista?.() && datos.momentos.length > 1 ? `<button class="btn prim" id="ia-cortar-todos" style="margin-top:12px">✂️ Cortar los ${datos.momentos.length} en vertical</button>` : ""}${pie(coste, id)}`;
+        const cortar = (m) =>
+          cortarEnVertical(
+            { inicio: deTiempo(m.inicio), fin: deTiempo(m.fin), titulo: m.titulo, gancho: m.gancho, textoArriba: m.texto_arriba, descripcion: m.descripcion, hashtags: m.hashtags, campanaId: opciones.campanaId || "", notas: `Momento propuesto por la IA: ${m.por_que_funciona}\nArranca con: «${m.frase_inicial}»` },
+            opciones.ctx
+          );
+        zona.querySelectorAll("[data-cortar]").forEach((b) => (b.onclick = () => (cortar(datos.momentos[b.dataset.cortar]), (b.disabled = true), (b.textContent = "✂️ En la fábrica"))));
+        zona.querySelector("#ia-cortar-todos") && (zona.querySelector("#ia-cortar-todos").onclick = (e) => (datos.momentos.forEach(cortar), (e.target.disabled = true), aviso("Los momentos van a la fábrica: los verás arriba")));
+        // «Hacerlo todo»: corta solo los que la IA puntúa con 6 o más (como mínimo los 3 mejores)
+        if (automatico && (opciones.ctx || window.fabricaLista?.())) {
+          const buenos = datos.momentos.filter((m) => m.puntuacion >= 6);
+          (buenos.length >= 3 ? buenos : datos.momentos.slice(0, 3)).forEach((m) => {
+            cortar(m);
+            const b = zona.querySelector(`[data-cortar="${datos.momentos.indexOf(m)}"]`);
+            if (b) (b.disabled = true), (b.textContent = "✂️ En la fábrica");
+          });
+        }
+        return datos;
+        zona.querySelectorAll("[data-m]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              const m = datos.momentos[b.dataset.m];
+              editarClip(null, { titulo: m.titulo, inicio: m.inicio, fin: m.fin, gancho: m.gancho, descripcion: m.descripcion || "", hashtags: m.hashtags || "", fuente: opciones.fuente || "", campanaId: opciones.campanaId || "", notas: `Momento propuesto por la IA: ${m.por_que_funciona}\nArranca con: «${m.frase_inicial}»` });
+            })
+        );
+      } catch (e) {
+        fallo(zona, e);
+      }
+    },
+
+    // ---------- Revisor de reglas: ¿cumple este clip lo que pide su campaña? ----------
+    async revisarClip(clip, camp, textoDicho) {
+      if (!clave() || !camp) return null;
+      const { datos, coste } = await pedirJSON(
+        `Revisa si este clip cumple las reglas de su campaña antes de subirlo. Compara SOLO con las reglas escritas: duración, menciones o hashtags obligatorios, temas o contenidos prohibidos, idioma, formato. Si una regla no se puede comprobar con estos datos (por ejemplo, la calidad de imagen), no la cuentes como incumplida: menciónala en «comprobar_a_mano». Sé breve y concreto.`,
+        {
+          reglas_de_la_campana: camp.reglas || "",
+          duracion_minima_s: n(camp.durMin) || null,
+          duracion_maxima_s: n(camp.durMax) || null,
+          mencion_obligatoria: camp.mencion || null,
+          hashtags_obligatorios: camp.hashtagsObl || null,
+          clip: { duracion_s: n(clip.duracion), texto_arriba: clip.textoArriba || null, descripcion_tiktok: textoParaTikTok(clip, camp), lo_que_se_dice: (textoDicho || "").slice(0, 6000) },
+        },
+        {
+          type: "object",
+          properties: {
+            cumple: { type: "string", enum: ["si", "dudas", "no"] },
+            problemas: { type: "array", items: { type: "string" } },
+            comprobar_a_mano: { type: "array", items: { type: "string" } },
+          },
+          required: ["cumple", "problemas", "comprobar_a_mano"],
+          additionalProperties: false,
+        },
+        "low",
+        "corto"
+      );
+      return { ...datos, fecha: new Date().toISOString(), coste };
+    },
+
+    // ---------- 3. Analizar una campaña ----------
+    async analizarCampana(c, zona) {
+      if (sinClave(zona)) return;
+      cargando(zona, "Analizando la campaña con sus datos");
+      try {
+        const { datos, coste, id } = await pedirJSON(
+          `Analiza si esta campaña le renta a este clipper, como un analista que mira los números. Fíjate sobre todo en: vistas medias por clip frente al mínimo para cobrar, qué parte de las vistas se ha pagado, lo que gana de media cada clipper y el mejor, la tendencia de vistas (últimos 7 días frente a los anteriores y su mejor semana), el dinero que queda por clipper y si encaja con sus cuentas e idioma. Da una ganancia esperada realista por clip y por mes SOLO si los datos lo permiten, explicando el cálculo.`,
+          { campana: datosCampana(c), tus_datos: resumenTusDatos() },
+          {
+            type: "object",
+            properties: {
+              veredicto: { type: "string", enum: ["Renta", "Dudosa", "No renta", "Sin datos suficientes"] },
+              resumen: { type: "string" },
+              ganancia_esperada: { type: "string" },
+              a_favor: { type: "array", items: { type: "string" } },
+              en_contra: { type: "array", items: { type: "string" } },
+              si_te_unes: { type: "array", items: { type: "string" } },
+              cuenta_recomendada: { type: "string" },
+            },
+            required: ["veredicto", "resumen", "ganancia_esperada", "a_favor", "en_contra", "si_te_unes", "cuenta_recomendada"],
+            additionalProperties: false,
+          },
+          "high"
+        );
+        const col = { Renta: "verde", Dudosa: "ambar", "No renta": "rosa" }[datos.veredicto] || "";
+        zona.innerHTML = `<div class="tarjeta ia-res" style="margin-top:12px"><b>✨ Análisis de la IA</b> <span class="chip ${col}">${esc(datos.veredicto)}</span>
+          <p>${esc(datos.resumen)}</p><p><b>Ganancia esperada:</b> ${esc(datos.ganancia_esperada)}</p>
+          <div class="rejilla dos"><div><b>A favor</b><ul>${datos.a_favor.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div><div><b>En contra</b><ul>${datos.en_contra.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div></div>
+          <b>Si te unes</b><ul>${datos.si_te_unes.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
+          <p class="peq"><b>Cuenta:</b> ${esc(datos.cuenta_recomendada)}</p></div>${pie(coste, id)}`;
+      } catch (e) {
+        fallo(zona, e);
+      }
+    },
+
+    // ---------- 4. Agente de campañas ----------
+    async agenteCampanas(zona) {
+      if (sinClave(zona)) return;
+      const R = radar();
+      if (!R.items.length) return (zona.innerHTML = `<p class="peq">Primero actualiza el radar.</p>`);
+      cargando(zona, "Revisando tus campañas y las del radar");
+      const mias = D.campanas
+        .filter((k) => k.estado !== "terminada")
+        .map((k) => {
+          const c = k.radarId && R.items.find((x) => x.id === k.radarId);
+          const clips = D.clips.filter((x) => x.campanaId === k.id && CUENTAN_VISTAS.includes(x.estado));
+          return { id: k.id, nombre: k.nombre, estado: k.estado, tus_clips: clips.length, tus_vistas: clips.reduce((s, x) => s + n(x.vistas), 0), datos_publicos: c ? datosCampana(c) : "no está en el radar (campaña apuntada a mano)" };
+        });
+      const candidatas = R.items
+        .map(evaluar)
+        .filter((c) => !D.campanas.some((k) => k.radarId === c.id) && !c.bloqueada && !(R.descartadas || {})[c.id])
+        .sort((a, b) => b.puntos - a.puntos)
+        .slice(0, 25)
+        .map((c) => ({ ...datosCampana(c), puntuacion_app: c.puntos }));
+      try {
+        const { datos, coste, id } = await pedirJSON(
+          `Eres el gestor de campañas de este clipper. Revisa sus campañas actuales y las candidatas del radar (Whop y Vyro) y decide qué hacer en cada cuenta para ganar más con su tiempo: retirar (o pausar) las que ya no rinden o se acaban, mantener las que funcionan y añadir las mejores candidatas que encajen con el nicho e idioma de cada cuenta. Máximo 3 campañas activas por cuenta. Justifica cada decisión con los datos. Usa exactamente los «id» que te paso.`,
+          { tus_datos: resumenTusDatos(), tus_campanas: mias, candidatas_del_radar: candidatas },
+          {
+            type: "object",
+            properties: {
+              resumen: { type: "string" },
+              cambios: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    accion: { type: "string", enum: ["añadir", "mantener", "pausar", "retirar"] },
+                    id: { type: "string" },
+                    nombre: { type: "string" },
+                    cuenta: { type: "string" },
+                    motivo: { type: "string" },
+                  },
+                  required: ["accion", "id", "nombre", "cuenta", "motivo"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["resumen", "cambios"],
+            additionalProperties: false,
+          },
+          "high"
+        );
+        const col = { añadir: "verde", mantener: "cian", pausar: "ambar", retirar: "rosa" };
+        zona.innerHTML = `<div class="ia-res" style="margin-top:10px"><p>${esc(datos.resumen)}</p>
+          ${datos.cambios
+            .map(
+              (x, i) => `<div class="ia-item"><span class="chip ${col[x.accion]}">${esc(x.accion)}</span><div style="flex:1;min-width:0"><b>${esc(x.nombre)}</b> <span class="peq">· ${esc(x.cuenta)}</span><div class="peq">${esc(x.motivo)}</div></div>${x.accion === "mantener" ? "" : `<button class="btn peq" data-cambio="${i}">Aplicar</button>`}</div>`
+            )
+            .join("")}
+          <button class="btn prim" id="ia-aplicar-todo" style="margin-top:8px">Aplicar todos los cambios</button></div>${pie(coste, id)}`;
+        const aplicar = (x) => {
+          if (x.accion === "añadir") {
+            const c = R.items.find((y) => y.id === x.id);
+            if (!c || D.campanas.some((k) => k.radarId === c.id)) return false;
+            D.campanas.push({ id: uid(), radarId: c.id, nombre: c.nombre, plataforma: c.plat, creador: c.org, cpm: c.tarifa, moneda: "USD", presupuesto: c.presupuesto, gastadoPct: c.presupuesto ? Math.round((1 - c.restante / c.presupuesto) * 100) : 0, minVistas: c.minVistas || "", maxPorClip: c.maxPago || "", fechaFin: c.fin && !c.finEstimado ? c.fin : "", enlace: c.enlace, redes: (c.redes || []).join(", "), estado: "porunirte", reglas: "", notas: `Propuesta por el agente de IA para ${x.cuenta}: ${x.motivo}` });
+            registrarPiloto(`IA: añadida «${c.nombre}» para ${x.cuenta}`);
+            return true;
+          }
+          const k = D.campanas.find((y) => y.id === x.id);
+          if (!k) return false;
+          k.estado = x.accion === "pausar" ? "pausada" : "terminada";
+          registrarPiloto(`IA: ${x.accion === "pausar" ? "pausada" : "retirada"} «${k.nombre}» (${x.motivo})`);
+          return true;
+        };
+        zona.querySelectorAll("[data-cambio]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              if (aplicar(datos.cambios[b.dataset.cambio])) (guardar(), (b.textContent = "✓ Hecho"), (b.disabled = true));
+            })
+        );
+        zona.querySelector("#ia-aplicar-todo").onclick = () => {
+          const n = datos.cambios.filter((x) => x.accion !== "mantener").filter(aplicar).length;
+          guardar();
+          aviso(`${n} cambio(s) aplicados. Las nuevas están en Campañas como «Por unirte».`);
+          vistaRadar();
+        };
+      } catch (e) {
+        fallo(zona, e);
+      }
+    },
+
+    // ---------- 5. Consejos sobre tus números ----------
+    async consejos(zona) {
+      if (sinClave(zona)) return;
+      const pubs = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado));
+      if (pubs.length < 3) return (zona.innerHTML = `<div class="tarjeta">Necesitas al menos 3 clips publicados con sus vistas para que la IA saque conclusiones.</div>`);
+      cargando(zona, "Estudiando tus números");
+      const clips = pubs.slice(-150).map((c) => ({
+        cuenta: cuenta(c.cuentaId)?.usuario,
+        campana: campana(c.campanaId)?.nombre,
+        publicado: c.fechaPub,
+        duracion_s: n(c.duracion) || null,
+        gancho: c.gancho || null,
+        vistas: n(c.vistas),
+        me_gusta: n(c.likes) || null,
+        comentarios: n(c.comentarios) || null,
+        compartidos: n(c.compartidos) || null,
+        minutos_edicion: n(c.minutos) || null,
+        estimado_eur: +gananciaClip(c).toFixed(2),
+        minimo_campana: n(campana(c.campanaId)?.minVistas) || null,
+      }));
+      try {
+        const { datos, coste, id } = await pedirJSON(
+          `Analiza los clips publicados de este clipper y dile qué está funcionando y qué no, con cifras de sus propios datos (cuenta, campaña, gancho, duración, hora y día de publicación, interacción, minutos de edición frente a lo que gana). Luego dale acciones concretas para la próxima semana. Si hay pocos datos para una conclusión, dilo.`,
+          { tus_datos: resumenTusDatos(), clips, cobrado_eur: D.cobros.filter((p) => p.estado === "cobrado").reduce((s, p) => s + aEur(p.importe, p.moneda), 0) },
+          {
+            type: "object",
+            properties: {
+              diagnostico: { type: "string" },
+              funciona: { type: "array", items: { type: "string" } },
+              no_funciona: { type: "array", items: { type: "string" } },
+              acciones: { type: "array", items: { type: "object", properties: { accion: { type: "string" }, por_que: { type: "string" }, prioridad: { type: "string", enum: ["alta", "media", "baja"] } }, required: ["accion", "por_que", "prioridad"], additionalProperties: false } },
+            },
+            required: ["diagnostico", "funciona", "no_funciona", "acciones"],
+            additionalProperties: false,
+          },
+          "high"
+        );
+        const col = { alta: "rosa", media: "ambar", baja: "" };
+        zona.innerHTML = `<div class="tarjeta ia-res"><p>${esc(datos.diagnostico)}</p>
+          <div class="rejilla dos"><div><b>Funciona</b><ul>${datos.funciona.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div><div><b>No funciona</b><ul>${datos.no_funciona.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div></div>
+          <b>Esta semana</b>${datos.acciones.map((a) => `<div class="ia-item"><span class="chip ${col[a.prioridad]}">${esc(a.prioridad)}</span><div style="flex:1"><b>${esc(a.accion)}</b><div class="peq">${esc(a.por_que)}</div></div></div>`).join("")}</div>${pie(coste, id)}`;
+      } catch (e) {
+        fallo(zona, e);
+      }
+    },
+
+    // ---------- 6. Asistente (chat) ----------
+    chat: [],
+    async preguntar(texto, zona) {
+      if (sinClave(zona)) return;
+      this.chat.push({ role: "user", content: texto });
+      vistaAsistente();
+      try {
+        const R = radar();
+        const contexto = {
+          tus_datos: resumenTusDatos(),
+          tus_campanas: D.campanas.filter((k) => k.estado !== "terminada").map((k) => ({ nombre: k.nombre, estado: k.estado, plataforma: k.plataforma, tarifa: k.cpm, minimo_vistas: k.minVistas })),
+          radar_actualizado: R.actualizado || "nunca",
+          mejores_del_radar: R.items.map(evaluar).sort((a, b) => b.puntos - a.puntos).slice(0, 12).map(datosCampana),
+          nichos_recomendados_en_la_app: NICHOS_RECOMENDADOS.map((x) => x.nombre),
+        };
+        const r = await pedirTexto(
+          `Respondes preguntas del clipper sobre clipping en TikTok, sus campañas y sus números. Tienes estos datos actuales de su app (úsalos cuando ayuden):\n${JSON.stringify(contexto)}\nSé concreto y breve. Si la pregunta necesita un dato que no tienes, dilo y explica dónde mirarlo (TikTok Studio, Whop, Vyro o un apartado de la app).`,
+          historialAPI(this.chat),
+          "medium"
+        );
+        this.chat.push({ role: "assistant", content: r.texto, coste: r.coste, modelo: nombreModelo(r.id) });
+      } catch (e) {
+        this.chat.push({ role: "assistant", content: "⚠ " + traducirError(e), error: true });
+      }
+      vistaAsistente();
+    },
+  };
+})();
+
+// Formato básico de las respuestas (Markdown): primero se escapa el texto y después se aplican negritas, listas y tablas
+function formatoIA(texto) {
+  const lineas = esc(texto).split("\n");
+  const enLinea = (t) => t.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  const celdas = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => enLinea(c.trim()));
+  let html = "";
+  for (let i = 0; i < lineas.length; i++) {
+    const l = lineas[i];
+    if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|?\s*:?-{2,}/.test(lineas[i + 1] || "")) {
+      const cab = celdas(l);
+      i += 2;
+      const filas = [];
+      while (i < lineas.length && /^\s*\|.*\|\s*$/.test(lineas[i])) filas.push(celdas(lineas[i++]));
+      i--;
+      html += `<div class="ia-tabla"><table><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${filas.map((f) => `<tr>${f.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    } else if (/^\s*[-*•]\s+/.test(l)) {
+      const items = [];
+      while (i < lineas.length && /^\s*[-*•]\s+/.test(lineas[i])) items.push(enLinea(lineas[i++].replace(/^\s*[-*•]\s+/, "")));
+      i--;
+      html += `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+    } else if (/^\s*\d+[.)]\s+/.test(l)) {
+      const items = [];
+      while (i < lineas.length && /^\s*\d+[.)]\s+/.test(lineas[i])) items.push(enLinea(lineas[i++].replace(/^\s*\d+[.)]\s+/, "")));
+      i--;
+      html += `<ol>${items.map((x) => `<li>${x}</li>`).join("")}</ol>`;
+    } else if (/^#{1,4}\s+/.test(l)) html += `<p><b>${enLinea(l.replace(/^#{1,4}\s+/, ""))}</b></p>`;
+    else if (/^\s*(-{3,}|\*{3,})\s*$/.test(l)) html += "<hr>";
+    else if (l.trim()) html += `<p>${enLinea(l)}</p>`;
+  }
+  return html;
+}
+
+// ---------- Sección Asistente IA ----------
+function vistaAsistente() {
+  acciones(ia.chat.length ? [["chat-nuevo", "Nueva conversación"]] : []);
+  $("#chat-nuevo") && ($("#chat-nuevo").onclick = () => ((ia.chat = []), vistaAsistente()));
+  const sugerencias = ["¿Qué campaña me conviene más ahora para cada cuenta?", "¿Por qué mis clips no pasan de 500 vistas?", "¿Cuántos clips al día debería subir para ganar 300 € al mes?", "¿Qué hago esta semana?"];
+  const pendiente = ia.chat.length && ia.chat[ia.chat.length - 1].role === "user";
+  $("#contenido").innerHTML = `
+    ${ia.configurada() ? "" : `<div class="tarjeta" style="border-color:var(--cian);margin-bottom:14px">Para hablar con la IA, pon tu clave de la API de Claude en <b>Ajustes → Inteligencia artificial</b>.</div>`}
+    <div class="chat">
+      ${
+        ia.chat.length
+          ? ia.chat.map((m) => `<div class="chat-m ${m.role === "user" ? "yo" : "ia"} ${m.error ? "error" : ""}">${m.role === "assistant" && !m.error ? formatoIA(m.content) : esc(m.content).replace(/\n/g, "<br>")}${m.role === "assistant" && !m.error ? `<div class="peq" style="margin-top:6px">${esc(m.modelo || "")}${m.coste != null ? ` · ≈ ${m.coste < 0.01 ? "<1 céntimo" : m.coste.toFixed(2) + " $"}` : ""}</div>` : ""}</div>`).join("")
+          : `<div class="vacio">Pregúntale lo que quieras sobre clipping, tus campañas o tus números. Conoce tus cuentas, tus campañas, tus vistas y las mejores campañas del radar.<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px">${sugerencias.map((s) => `<button class="btn peq" data-sug="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`
+      }
+      ${pendiente ? `<div class="chat-m ia ia-cargando">✨ Pensando…</div>` : ""}
+    </div>
+    <div class="chat-caja"><textarea id="chat-txt" placeholder="Escribe tu pregunta…" ${pendiente ? "disabled" : ""}></textarea><button class="btn prim" id="chat-enviar" ${pendiente ? "disabled" : ""}>Enviar</button></div>
+    <div id="chat-zona"></div>`;
+  const enviar = () => {
+    const t = $("#chat-txt").value.trim();
+    if (t) ia.preguntar(t, $("#chat-zona"));
+  };
+  $("#chat-enviar").onclick = enviar;
+  // Ojo: si un onkeydown devuelve false, el navegador descarta la tecla. Por eso va entre llaves.
+  $("#chat-txt").onkeydown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !window.estudio.tactil) {
+      e.preventDefault();
+      enviar();
+    }
+  };
+  $("#contenido").querySelectorAll("[data-sug]").forEach((b) => (b.onclick = () => ia.preguntar(b.dataset.sug, $("#chat-zona"))));
+  const c = $("#contenido");
+  c.scrollTop = c.scrollHeight;
+}
+
+// ---------- Bloque «Buscar momentos con IA» de la Mesa de corte ----------
+function bloqueMomentosIA() {
+  return `<div class="tarjeta" style="margin-top:18px">
+    <h3 style="margin-top:0">✨ Buscar los mejores momentos con IA</h3>
+    <p class="peq">${window.estudio.fabrica ? "Con la <b>Fábrica de clips</b> la transcripción se rellena sola. Si no, en" : "En"} YouTube, abre el vídeo largo → «…más» de la descripción → <b>Mostrar transcripción</b>, selecciona todo el texto (con los tiempos) y pégalo aquí. La IA lo lee entero y te propone los mejores momentos con su tiempo de inicio y fin, el gancho y por qué funcionan. Cada uno se convierte en un clip con un toque.</p>
+    <div class="form">
+      <label class="ancho">Transcripción con tiempos<textarea id="ia-trans" style="min-height:120px" placeholder="0:00 Bienvenidos a…&#10;0:07 Hoy tenemos con nosotros a…"></textarea></label>
+      <label>Campaña<select id="ia-trans-camp">${opciones(D.campanas.filter((c) => c.estado !== "terminada").map((c) => [c.id, c.nombre]), "", "Sin campaña")}</select></label>
+      <label>De dónde sale (opcional)<input id="ia-trans-fuente" placeholder="Nombre del vídeo o enlace" /></label>
+      <label>Duración del clip (s)<div style="display:flex;gap:6px"><input id="ia-trans-min" type="number" value="25" min="5" /><input id="ia-trans-max" type="number" value="60" min="5" /></div></label>
+      <label>Cuántos momentos<input id="ia-trans-n" type="number" value="8" min="1" max="20" /></label>
+    </div>
+    <button class="btn prim" id="ia-trans-btn" style="margin-top:10px">Buscar momentos</button>
+    <div id="ia-trans-res"></div>
+  </div>`;
+}
+// Opciones del bloque «Buscar momentos» (también las usa «Hacerlo todo» de la fábrica)
+function opcionesMomentos() {
+  return {
+    campanaId: document.getElementById("ia-trans-camp").value,
+    fuente: document.getElementById("ia-trans-fuente").value,
+    durMin: n(document.getElementById("ia-trans-min").value) || 25,
+    durMax: n(document.getElementById("ia-trans-max").value) || 60,
+    cuantos: Math.min(20, Math.max(1, n(document.getElementById("ia-trans-n").value) || 8)),
+  };
+}
+function montarMomentosIA() {
+  const b = document.getElementById("ia-trans-btn");
+  if (!b) return;
+  // Si la campaña tiene duración mínima o máxima, se usa para los momentos
+  document.getElementById("ia-trans-camp").onchange = (e) => {
+    const k = campana(e.target.value);
+    if (k && n(k.durMin)) document.getElementById("ia-trans-min").value = n(k.durMin);
+    if (k && n(k.durMax)) document.getElementById("ia-trans-max").value = n(k.durMax);
+  };
+  b.onclick = () => ia.momentos(document.getElementById("ia-trans").value, opcionesMomentos(), document.getElementById("ia-trans-res"));
+}
