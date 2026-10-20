@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.13.5";
+const VERSION_APP = "4.14";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -569,6 +569,8 @@ function editarCampana(c) {
       <label>Redes permitidas<input name="redes" value="${esc(c.redes)}" placeholder="TikTok, Reels, Shorts" /></label>
       <label>Termina el<input name="fechaFin" type="date" value="${esc(c.fechaFin)}" /></label>
       <label>Estado<select name="estado">${opciones([["porunirte", "Por unirte"], ["activa", "Activa"], ["pausada", "Pausada"], ["terminada", "Terminada"]], c.estado)}</select></label>
+      <label>Cuenta con la que la trabajas<select name="cuentaSugerida">${opciones(D.cuentas.map((a) => [a.id, a.usuario]), c.cuentaSugerida, "Sin asignar")}</select></label>
+      <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="paginaDedicada" ${c.paginaDedicada ? "checked" : ""}/> Exige página dedicada (una cuenta solo para esta campaña)</label>
       <label>Enlace a la campaña<input name="enlace" value="${esc(c.enlace)}" placeholder="https://" /></label>
       <label>Material (carpeta de vídeos)<input name="material" value="${esc(c.material)}" placeholder="Enlace al Drive o carpeta del creador" /></label>
       <label class="ancho">Etiqueta de publicidad que exige<input name="divulgacion" value="${esc(c.divulgacion)}" placeholder="Ej.: #Sponsored o #MarcaAd al principio de la descripción" /></label>

@@ -48,35 +48,117 @@ function encaje(c, a) {
 
 const diasHasta = (f) => (f ? Math.ceil((new Date(f) - new Date(hoyISO())) / 864e5) : null);
 
-// Puntuación de 0 a 100 con sus motivos. Todo sale de los datos de la campaña; nada es inventado.
-function puntuar(c, cuentaObj) {
-  const motivos = [];
-  let p = 0;
-  if (c.idioma === idiomaObjetivo()) (p += 30), motivos.push(`En ${IDIOMAS[c.idioma] || c.idioma}`);
-  p += Math.min(1, c.tarifa / 3) * 20;
-  if (c.tarifa >= 1.5) motivos.push(`Paga ${c.tarifa.toFixed(2)} $/1.000`);
-  const porClipper = c.clippers == null ? c.restante / 10 : c.restante / (c.clippers + 1);
-  p += Math.min(1, porClipper / 300) * 15;
-  if (c.clippers != null && c.clippers <= 10) motivos.push(c.clippers ? `Solo ${c.clippers} clippers` : "Nadie trabaja en ella aún");
-  if (c.minVistas && c.minVistas <= 1000) (p += 10), motivos.push("Cobras desde ~1.000 vistas");
-  else if (c.minVistas <= 5000) p += 6;
-  else if (c.minVistas <= 10000) p += 3;
-  const d = diasHasta(c.fin);
-  if (d == null) p += 6;
-  else if (d >= 14) p += 10;
-  else if (d >= 7) p += 6;
-  else if (d >= 3) p += 3;
-  if (!c.solicitud) p += 5;
-  if (c.bloqueada) p -= 20;
-  const v = veredicto(c);
-  if (v.tipo === "si") (p += 10), motivos.push("Sus clips están cobrando");
-  if (v.tipo === "no") (p -= 25), motivos.push("Los datos dicen que no renta");
-  if (cuentaObj && encaje(c, cuentaObj)) (p += 10), motivos.push(`Encaja con ${cuentaObj.usuario}`);
-  return { puntos: Math.max(0, Math.min(100, Math.round(p))), motivos };
+// Estados de clip con vistas reales (los mismos que CUENTAN_VISTAS en app.js; aquí aparte porque el servidor usa este archivo solo)
+const ESTADOS_CON_VISTAS = ["publicado", "enviado", "aprobado"];
+// Campañas que exigen una cuenta solo para ellas (como Daniel Curto): en ese caso no sirve una cuenta de nicho con varios creadores
+const DEDICADA = /p[áa]gina dedicada|cuenta dedicada|p[áa]gina exclusiva|dedicated (page|account)|fan ?page/i;
+const DIAS_MINIMOS = 10;
+// Campañas que piden público de un país concreto: con cuentas que trabajan desde España es difícil cumplirlo
+const PUBLICO_PAIS = [
+  [/mexic|m[ée]xico|🇲🇽/i, "México"],
+  [/canad|🇨🇦/i, "Canadá"],
+  [/\b(us|u\.s\.|usa|american|united states)\b[^.]{0,20}audienc|audienc[^.]{0,20}\b(us|usa|american|united states)\b|🇺🇸/i, "EE. UU."],
+  [/brasil|brazil|🇧🇷/i, "Brasil"],
+  [/argentin|🇦🇷/i, "Argentina"],
+  [/colombia|🇨🇴/i, "Colombia"],
+];
+const PAIS_PROPIO = "España"; // una campaña que se queda sin dinero antes no le da tiempo a una cuenta nueva
+
+// Rentabilidad real con lo que publica Whop: lo que la campaña ya ha gastado, repartido entre sus clips aprobados y sus clippers,
+// y a qué ritmo gasta (para saber cuándo se queda sin dinero). Vyro no publica clips aprobados ni clippers.
+function rentabilidad(c) {
+  const gastado = Math.max(0, n(c.presupuesto) - n(c.restante));
+  const porClip = n(c.aprobados) >= 10 ? gastado / c.aprobados : null;
+  const porClipper = c.medioPorClipper ?? (n(c.clippers) ? gastado / c.clippers : null);
+  const dias = c.lanzada ? Math.max(1, (Date.parse(hoyISO()) - Date.parse(c.lanzada)) / 864e5) : null;
+  const ritmo = dias && gastado > 0 ? gastado / dias : null;
+  const seAgota = ritmo ? n(c.restante) / ritmo : null;
+  const fin = c.fin && !c.finEstimado ? diasHasta(c.fin) : null;
+  const vida = [seAgota, fin].filter((x) => x != null);
+  return { gastado, porClip, porClipper, ritmo, diasVida: vida.length ? Math.min(...vida) : null, tiktok: !(c.redes || []).length || c.redes.includes("tiktok") };
 }
 
-// La mejor cuenta para una campaña (la que más encaja)
+// Vistas típicas de los clips de una cuenta (la mediana), en cuanto tiene 5 clips con vistas apuntadas
+function vistasCuenta(a) {
+  if (!a) return null;
+  const v = (D.clips || [])
+    .filter((x) => x.cuentaId === a.id && ESTADOS_CON_VISTAS.includes(x.estado) && n(x.vistas) > 0)
+    .map((x) => n(x.vistas))
+    .sort((x, y) => x - y);
+  return v.length >= 5 ? v[Math.floor(v.length / 2)] : null;
+}
+
+// País del público que pide la campaña según su nombre o descripción («for Mexican audiences»), si no es el tuyo
+function publicoPais(c) {
+  const t = `${c.nombre} ${c.desc || ""}`;
+  const hit = PUBLICO_PAIS.find(([rx]) => rx.test(t));
+  return hit && hit[1] !== PAIS_PROPIO ? hit[1] : "";
+}
+
+// Si la campaña exige página dedicada: «si» cuando lo has marcado en su ficha, «posible» cuando lo dice su descripción
+function dedicada(c) {
+  const k = (D.campanas || []).find((x) => x.radarId === c.id);
+  if (k?.paginaDedicada) return "si";
+  return DEDICADA.test(c.desc || "") ? "posible" : "";
+}
+
+// La cuenta con la que trabajas una campaña (la que pusiste en su ficha), si la has añadido
+const cuentaAsignada = (c) => {
+  const k = (D.campanas || []).find((x) => x.radarId === c.id);
+  return (k?.cuentaSugerida && D.cuentas.find((a) => a.id === k.cuentaSugerida)) || null;
+};
+
+// Puntuación de rentabilidad de 0 a 100 con sus motivos. Todo sale de los datos de la campaña y de tus clips; nada es inventado.
+//  · Dinero real por clip aprobado (30) · Si puedes cobrar con tus vistas (20) · Tiempo hasta que se quede sin dinero (15)
+//  · Dinero que queda por clipper (15) · Tendencia de sus vistas (10) · Tu idioma y el nicho de la cuenta (10)
+function puntuar(c, cuentaObj) {
+  const motivos = [];
+  const R = rentabilidad(c);
+  const v = veredicto(c);
+  let p = 0;
+  if (R.porClip != null) {
+    p += Math.min(1, R.porClip / 15) * 30;
+    motivos.push(`Cada clip aprobado ha cobrado ${R.porClip.toFixed(2)} $ de media`);
+  } else {
+    p += Math.min(1, c.tarifa / 3) * 10;
+    motivos.push(c.plat === "Vyro" ? "Vyro no publica lo que paga por clip" : "Sin clips aprobados suficientes para saber lo que paga de verdad");
+  }
+  const min = n(c.minVistas);
+  const vc = vistasCuenta(cuentaObj);
+  if (vc != null) {
+    p += vc >= min ? 20 : vc >= min * 0.5 ? 8 : 0;
+    motivos.push(vc >= min ? `Tus clips llegan al mínimo (${fmtNum(vc)} vistas de media frente a ${fmtNum(min)})` : `Tus clips aún no llegan al mínimo (${fmtNum(vc)} de ${fmtNum(min)} vistas)`);
+  } else {
+    p += min <= 1000 ? 20 : min <= 3000 ? 15 : min <= 5000 ? 10 : min <= 10000 ? 5 : 0;
+    if (min <= 1000) motivos.push("Cobras desde ~1.000 vistas: buena para empezar");
+    else if (min > 10000) motivos.push(`Pide ${fmtNum(min)} vistas por clip: difícil para una cuenta nueva`);
+  }
+  const dv = R.diasVida;
+  p += dv == null ? 8 : dv >= 30 ? 15 : dv >= 14 ? 10 : dv >= DIAS_MINIMOS ? 5 : 0;
+  if (dv != null && dv < DIAS_MINIMOS) motivos.push(`Se queda sin dinero en ~${Math.max(1, Math.round(dv))} días`);
+  const porClipper = n(c.restante) / ((c.clippers ?? 9) + 1);
+  p += Math.min(1, porClipper / 100) * 15;
+  if (c.clippers != null && c.clippers <= 10) motivos.push(c.clippers ? `Solo ${c.clippers} clippers` : "Nadie trabaja en ella aún");
+  p += v.creciendo ? 10 : v.hundida ? 0 : v.parada ? 3 : 5;
+  if (v.creciendo) motivos.push("Sus vistas van a más");
+  if (c.idioma === idiomaObjetivo()) p += 5;
+  if (cuentaObj && (encaje(c, cuentaObj) || cuentaAsignada(c)?.id === cuentaObj.id)) (p += 5), motivos.push(`Para ${cuentaObj.usuario}`);
+  if (c.solicitud) p -= 5;
+  if (c.bloqueada) p -= 20;
+  if (!R.tiktok) (p -= 30), motivos.push("No paga en TikTok");
+  const pais = publicoPais(c);
+  if (pais) (p -= 20), motivos.push(`Pide público de ${pais}: difícil con cuentas desde España`);
+  if (dv != null && dv < DIAS_MINIMOS) p -= 15;
+  if (v.tipo === "no") p -= 15;
+  return { puntos: Math.max(0, Math.min(100, Math.round(p))), motivos, rent: R };
+}
+
+// La mejor cuenta para una campaña: la que pusiste en su ficha y, si no, la que más encaja con su nicho.
+// Si exige página dedicada y no tiene cuenta asignada, no se la propone a ninguna cuenta de nicho.
 function mejorCuenta(c) {
+  const asignada = cuentaAsignada(c);
+  if (asignada) return asignada;
+  if (dedicada(c) === "si") return null;
   let mejor = null, max = 0;
   D.cuentas.forEach((a) => {
     const e = encaje(c, a);
@@ -85,10 +167,16 @@ function mejorCuenta(c) {
   return mejor;
 }
 
+// Se puede recomendar: tu idioma, paga en TikTok, no bloqueada, sin apuestas ni política y con tiempo para cobrar
+function recomendable(c, R = rentabilidad(c)) {
+  const t = textoCampana(c);
+  return c.idioma === idiomaObjetivo() && R.tiktok && !publicoPais(c) && !c.bloqueada && !RIESGO.test(t) && !POLITICA.test(t) && n(c.restante) >= 100 && (R.diasVida == null || R.diasVida >= DIAS_MINIMOS);
+}
+
 function evaluar(c) {
   const a = mejorCuenta(c);
   const r = puntuar(c, a);
-  const joya = r.puntos >= 65 && c.idioma === idiomaObjetivo() && c.restante >= 200 && !c.bloqueada && !RIESGO.test(textoCampana(c)) && !POLITICA.test(textoCampana(c)) && (!D.cuentas.length || !!a) && veredicto(c).tipo !== "no";
+  const joya = r.puntos >= 60 && recomendable(c, r.rent) && n(c.restante) >= 200 && (!D.cuentas.length || !!a) && veredicto(c).tipo !== "no";
   return { ...c, cuentaSug: a, ...r, joya };
 }
 
@@ -152,7 +240,7 @@ function procesarRadar(r, silencioso) {
   const evaluados = r.items.map(evaluar).sort((a, b) => b.puntos - a.puntos);
   const propias = evaluados.filter((c) => c.idioma === idiomaObjetivo());
   const resto = evaluados.filter((c) => c.idioma !== idiomaObjetivo()).slice(0, Math.max(0, RADAR_MAX - propias.length));
-  R.items = [...propias, ...resto].map(({ cuentaSug, puntos, motivos, joya, ...c }) => c);
+  R.items = [...propias, ...resto].map(({ cuentaSug, puntos, motivos, joya, rent, ...c }) => c);
   R.anterior = antes;
   R.actualizado = r.actualizado;
   R.errores = r.errores || [];
@@ -234,6 +322,7 @@ function vistaRadar() {
       if (f.orden === "tarifa") return b.tarifa - a.tarifa;
       // Lo que la campaña ya ha pagado de media a cada clipper (dato real de Whop; Vyro no lo publica y va al final)
       if (f.orden === "dinero") return (b.medioPorClipper ?? -1) - (a.medioPorClipper ?? -1);
+      if (f.orden === "porclip") return (b.rent.porClip ?? -1) - (a.rent.porClip ?? -1);
       if (f.orden === "restante") return b.restante - a.restante;
       if (f.orden === "nuevas") return (R.vistos?.[b.id] || "").localeCompare(R.vistos?.[a.id] || "");
       if (f.orden === "fin") return (diasHasta(a.fin) ?? 9999) - (diasHasta(b.fin) ?? 9999);
@@ -260,7 +349,7 @@ function vistaRadar() {
       R.items.length
         ? `<div class="rejilla kpis">
       <div class="kpi"><div class="et">En ${IDIOMAS[idiomaObjetivo()]}</div><div class="val">${enIdioma.length}</div><div class="nota">campañas de clipping con TikTok</div></div>
-      <div class="kpi"><div class="et">Joyas</div><div class="val">${joyas.length}</div><div class="nota">65+ puntos, tu idioma y tu nicho</div></div>
+      <div class="kpi"><div class="et">Joyas</div><div class="val">${joyas.length}</div><div class="nota">60+ de rentabilidad, tu idioma y con tiempo para cobrar</div></div>
       <div class="kpi"><div class="et">Nuevas</div><div class="val">${nuevas.length}</div><div class="nota">desde la lectura anterior</div></div>
       <div class="kpi"><div class="et">Mejor tarifa (${IDIOMAS[idiomaObjetivo()]})</div><div class="val">${enIdioma.length ? Math.max(...enIdioma.map((c) => c.tarifa)).toFixed(2) + " $" : "—"}</div><div class="nota">por cada 1.000 vistas en TikTok</div></div>
     </div>
@@ -285,7 +374,7 @@ function vistaRadar() {
       <select id="r-idioma">${opciones(Object.entries(IDIOMAS), f.idioma, "Todos los idiomas")}</select>
       <select id="r-plat">${opciones([["Whop", "Whop"], ["Vyro", "Vyro"]], f.plat, "Whop y Vyro")}</select>
       <select id="r-cuenta">${opciones(D.cuentas.map((a) => [a.id, "Encaja con " + a.usuario]), f.cuenta, "Cualquier nicho")}</select>
-      <select id="r-orden">${opciones([["puntos", "Mejor puntuación"], ["dinero", "Más dinero ha pagado a cada clipper"], ["tarifa", "Mejor tarifa"], ["restante", "Más presupuesto"], ["nuevas", "Más nuevas"], ["fin", "Terminan antes"]], f.orden)}</select>
+      <select id="r-orden">${opciones([["puntos", "Más rentable (recomendado)"], ["porclip", "Más dinero por clip aprobado"], ["dinero", "Más dinero ha pagado a cada clipper"], ["tarifa", "Mejor tarifa"], ["restante", "Más presupuesto"], ["nuevas", "Más nuevas"], ["fin", "Terminan antes"]], f.orden)}</select>
       <select id="r-veredicto">${opciones([["si", "Renta"], ["duda", "Dudosa"], ["nueva", "Nueva (sin datos)"], ["no", "No renta"], ["sindatos", "Sin datos (Vyro)"]], f.veredicto, "Cualquier veredicto")}</select>
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--texto)"><input type="checkbox" id="r-joyas" ${f.soloJoyas ? "checked" : ""}/> Solo joyas</label>
     </div>
@@ -294,7 +383,8 @@ function vistaRadar() {
     <div class="radar-lista">${lista.slice(0, 80).map((c) => tarjetaCampanaRadar(c, nuevo(c))).join("")}</div>
     ${lista.length > 80 ? `<p class="peq">Mostrando las 80 primeras. Usa los filtros para afinar.</p>` : ""}
     <details class="plegable"><summary>Cómo se puntúa y de dónde sale cada dato</summary>
-    <div class="tarjeta peq">De 0 a 100, solo con datos de la campaña: idioma que eliges en Ajustes (30), tarifa en TikTok (hasta 20 a partir de 3 $/1.000), presupuesto que queda por cada clipper (15), vistas mínimas para cobrar (10), días que le quedan (10), sin solicitud (5) y si encaja con el nicho de una de tus cuentas (10). Las bloqueadas restan 20. <b>Joya</b> = 65 puntos o más, en tu idioma, que encaja con el nicho de alguna de tus cuentas, con 200 $ o más por gastar y sin apuestas ni cripto.<br><br>
+    <div class="tarjeta peq"><b>Rentabilidad de 0 a 100</b>, solo con datos reales: <b>dinero que ha cobrado de verdad cada clip aprobado</b> (presupuesto gastado ÷ clips aprobados, hasta 30), <b>si puedes cobrar</b> (con las vistas medias de tus clips en cuanto tienes 5; si la cuenta es nueva, lo bajo que sea el mínimo de vistas, hasta 20), <b>tiempo hasta que se quede sin dinero</b> a su ritmo de gasto (hasta 15), <b>dinero que queda por clipper</b> (hasta 15), <b>tendencia</b> de sus vistas (hasta 10) y <b>tu idioma y el nicho de la cuenta</b> (hasta 10). Restan: no pagar en TikTok, pedir público de otro país (México, Canadá, EE. UU.…), quedarse sin dinero en menos de ${DIAS_MINIMOS} días, que los datos digan que no renta, tener que solicitarla o estar bloqueada.<br><br>
+    <b>Joya</b> = 60 o más, en tu idioma, que paga en TikTok, sin pedir público de otro país, con 200 $ o más y al menos ${DIAS_MINIMOS} días de dinero, sin apuestas, cripto ni política. Las que exigen página dedicada solo se proponen para la cuenta que les asignes en su ficha (Campañas).<br><br>
     <b>De dónde sale cada dato:</b> tarifa, presupuesto, clippers, mínimo y máximo por clip y solicitud son los que publica cada plataforma. En Vyro, el idioma y la fecha de fin también son oficiales. En Whop el idioma se <b>detecta por el texto</b> de la campaña y la fecha de fin es una <b>estimación</b> según lo rápido que gasta su presupuesto. Las reglas completas (duración, país del público, menciones) solo se ven dentro de cada campaña: léelas antes de unirte.</div></details>`
         : ""
     }`;
@@ -319,30 +409,49 @@ function vistaRadar() {
   $("#r-agente") && ($("#r-agente").onclick = () => ia.agenteCampanas($("#r-agente-res")));
 }
 
-// Las 3 mejores para cada cuenta
+// Línea corta con lo que importa de verdad de una campaña: dinero real por clip, cuándo se acaba, mínimo y competencia
+function lineaRentabilidad(c, R = rentabilidad(c)) {
+  return [
+    R.porClip != null ? `<b>${R.porClip.toFixed(2)} $</b> por clip aprobado` : `${c.tarifa.toFixed(2)} $/1.000 (sin datos de pago aún)`,
+    R.diasVida != null ? `se agota en ~${R.diasVida > 365 ? "+365" : fmtNum(R.diasVida)} días` : "",
+    c.minVistas ? `cobra desde ${fmtCorto(c.minVistas)} vistas` : "",
+    c.clippers != null ? `${fmtNum(c.clippers)} clippers` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+// Las 3 mejores para cada cuenta, ordenadas por lo que le pueden dar a esa cuenta (con sus vistas, si ya tiene clips).
+// Las campañas que exigen página dedicada solo salen en la cuenta que les asignes en su ficha.
 function tarjetasPorCuenta(todos) {
   if (!D.cuentas.length)
     return `<div class="tarjeta" style="margin-top:14px">Añade tus cuentas en <b>Cuentas</b> (con su nicho y, si quieres, palabras clave) y aquí verás las mejores campañas para cada una.</div>`;
-  return `<h2>Lo mejor para cada cuenta</h2><div class="rejilla dos">${D.cuentas
+  return `<h2>Lo mejor para cada cuenta</h2>
+  <p class="peq" style="margin-top:-6px">Ordenado por <b>rentabilidad real</b>: lo que ha cobrado cada clip aprobado, si tus clips llegan al mínimo, cuánto le queda de presupuesto y la competencia. Solo campañas en tu idioma, que pagan en TikTok, sin pedir público de otro país, que no salen como «No renta» y con al menos ${DIAS_MINIMOS} días de dinero.</p>
+  <div class="rejilla dos">${D.cuentas
     .map((a) => {
       const claves = clavesCuenta(a);
+      const vc = vistasCuenta(a);
       const top = todos
-        .filter((c) => encaje(c, a) > 0 && c.idioma === idiomaObjetivo() && !c.bloqueada)
-        .map((c) => ({ ...c, ...puntuar(c, a), enc: encaje(c, a) }))
-        // Primero lo que más encaja con el nicho (cada palabra clave que coincide pesa 6 puntos), luego la puntuación
-        .sort((x, y) => y.puntos + 6 * y.enc - (x.puntos + 6 * x.enc))
+        .filter((c) => recomendable(c) && veredicto(c).tipo !== "no" && (cuentaAsignada(c)?.id === a.id || (encaje(c, a) > 0 && dedicada(c) !== "si" && !cuentaAsignada(c))))
+        .map((c) => ({ ...c, ...puntuar(c, a) }))
+        .sort((x, y) => y.puntos - x.puntos)
         .slice(0, 3);
       return `<div class="tarjeta"><div><b>${esc(a.usuario)}</b> <span class="peq">· ${esc(a.nicho || "sin nicho")}</span></div>
+        <div class="peq" style="margin:2px 0 6px">${vc != null ? `Tus clips: ${fmtNum(vc)} vistas de media` : "Cuenta nueva: se priorizan las que cobran con pocas vistas"}</div>
         ${
-          !claves.length
+          !claves.length && !todos.some((c) => cuentaAsignada(c)?.id === a.id)
             ? `<p class="peq">Ponle un nicho o palabras clave en Cuentas para buscarle campañas.</p>`
             : top.length
             ? top
-                .map(
-                  (c) => `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · quedan ${fmtNum(c.restante)} $${c.minVistas ? ` · cobra desde ${fmtCorto(c.minVistas)} vistas` : ""}</div></div><a class="btn peq" href="${esc(c.enlace)}" target="_blank">Ver ↗</a></div>`
-                )
+                .map((c) => {
+                  const ded = dedicada(c);
+                  return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 60 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${lineaRentabilidad(c, c.rent)}</div>${
+                    ded ? `<div class="peq" style="color:var(--ambar)">${ded === "si" ? "Exige página dedicada" : "Puede exigir página dedicada: mira sus reglas"}</div>` : ""
+                  }</div><button class="btn peq" data-informe="${c.id}">Ver</button></div>`;
+                })
                 .join("")
-            : `<p class="peq">Ahora mismo no hay campañas en ${IDIOMAS[idiomaObjetivo()]} que encajen con este nicho.</p>`
+            : `<p class="peq">Ahora mismo no hay campañas en ${IDIOMAS[idiomaObjetivo()]} que encajen con esta cuenta y le den tiempo a cobrar.</p>`
         }</div>`;
     })
     .join("")}</div>`;
@@ -365,6 +474,10 @@ function tarjetaCampanaRadar(c, esNueva) {
           <span class="chip ${c.idioma === idiomaObjetivo() ? "verde" : ""}" title="${c.idiomaFuente === "oficial" ? "Idioma oficial de la campaña" : "Idioma detectado por el texto de la campaña"}">${IDIOMAS[c.idioma] || c.idioma}${c.idiomaFuente === "oficial" ? "" : " *"}</span>
           ${esNueva ? `<span class="chip ambar">Nueva</span>` : ""}
           ${c.solicitud ? `<span class="chip">Hay que solicitarla</span>` : ""}
+          ${c.rent && !c.rent.tiktok ? `<span class="chip rosa">No paga en TikTok</span>` : ""}
+          ${publicoPais(c) ? `<span class="chip rosa">Pide público de ${publicoPais(c)}</span>` : ""}
+          ${dedicada(c) ? `<span class="chip ambar">${dedicada(c) === "si" ? "Exige página dedicada" : "Puede exigir página dedicada"}</span>` : ""}
+          ${cuentaAsignada(c) ? `<span class="chip verde">Para ${esc(cuentaAsignada(c).usuario)}</span>` : ""}
           ${c.bloqueada ? `<span class="chip">Bloqueada</span>` : ""}
           ${riesgo ? `<span class="chip rosa">Apuestas / cripto</span>` : ""}
           ${POLITICA.test(textoCampana(c)) ? `<span class="chip rosa" title="TikTok no permite cobrar por contenido político">Política: TikTok no deja cobrar</span>` : ""}
@@ -376,9 +489,10 @@ function tarjetaCampanaRadar(c, esNueva) {
       <div><span>Tarifa TikTok</span><b>${c.tarifa.toFixed(2)} $</b><small>por 1.000 vistas</small></div>
       <div><span>Queda</span><b>${fmtNum(c.restante)} $</b><small>${gastado} % gastado</small></div>
       <div><span>Clippers</span><b>${c.clippers == null ? "—" : fmtNum(c.clippers)}</b><small>${c.clippers == null ? "Vyro no lo publica" : "trabajando en ella"}</small></div>
+      <div><span>Por clip aprobado</span><b>${c.rent?.porClip == null ? "—" : c.rent.porClip.toFixed(2) + " $"}</b><small>${c.rent?.porClip == null ? (c.plat === "Vyro" ? "Vyro no lo publica" : "aún sin datos") : "lo que ha cobrado de media"}</small></div>
       <div><span>Ha pagado</span><b>${c.medioPorClipper == null ? "—" : fmtNum(c.medioPorClipper) + " $"}</b><small>${c.medioPorClipper == null ? "Vyro no lo publica" : "de media a cada clipper"}</small></div>
       <div><span>Cobras desde</span><b>${c.minVistas ? fmtCorto(c.minVistas) : "—"}</b><small>vistas por clip${c.maxPago ? ` · máx. ${fmtNum(c.maxPago)} $` : ""}</small></div>
-      <div><span>Termina</span><b>${c.fin ? (d != null && d > 365 ? "+1 año" : fechaCorta(c.fin)) : "—"}</b><small>${c.fin ? (c.finEstimado ? "estimado por su ritmo de gasto" : "fecha oficial") : "sin datos"}</small></div>
+      <div><span>Se agota en</span><b>${c.rent?.diasVida == null ? "—" : c.rent.diasVida > 365 ? "+1 año" : "~" + fmtNum(c.rent.diasVida) + " días"}</b><small>${c.rent?.diasVida == null ? "sin datos" : c.fin && !c.finEstimado ? "a su ritmo de gasto o su fecha de fin" : "a su ritmo de gasto"}</small></div>
     </div>
     ${c.desc ? `<p class="peq" style="margin:8px 0 0">${esc(c.desc)}${c.desc.length >= 220 ? "…" : ""}</p>` : ""}
     ${c.motivos?.length ? `<p class="peq" style="margin:6px 0 0;color:var(--verde)">${c.motivos.map(esc).join(" · ")}</p>` : ""}
@@ -417,7 +531,12 @@ function veredicto(c) {
   const vpc = c.vistasPorClip || 0;
   const min = c.minVistas || 0;
   const clipMedio = vpc >= min ? Math.min(c.maxPago || Infinity, (vpc / 1000) * c.tarifa) : 0;
-  const pctPagadas = c.vistas ? c.vistasPagadas / c.vistas : null;
+  // Si dice haber pagado más vistas de las que tiene, el dato es raro: no se usa
+  const pctBruto = c.vistas ? c.vistasPagadas / c.vistas : null;
+  const pctPagadas = pctBruto != null && pctBruto <= 1 ? pctBruto : null;
+  const R = rentabilidad(c);
+  // Lo que ha cobrado de verdad cada clip aprobado (presupuesto gastado ÷ clips aprobados); la media de vistas se infla con los virales
+  const porClip = R.porClip ?? clipMedio;
   const caida = c.pico7 > 0 && c.ult7 < 0.15 * c.pico7 && c.prev7 > c.ult7;
   const aprob14 = (c.serieAprob || []).slice(-14).reduce((a, b) => a + b, 0);
   // Caída con clips nuevos entrando = el público se ha cansado (saturada). Sin clips nuevos = parada (nadie publica).
@@ -426,18 +545,21 @@ function veredicto(c) {
   const creciendo = c.prev7 > 0 && c.ult7 > c.prev7 * 1.2;
   const porClipper = c.restante / ((c.clippers || 0) + 1);
   motivos.push(`Un clip aprobado saca ${fmtNum(vpc)} vistas de media${min ? ` (cobras desde ${fmtNum(min)})` : ""}`);
-  motivos.push(clipMedio ? `Un clip medio cobraría ~${clipMedio.toFixed(2)} $` : "Un clip medio no llega al mínimo: cobraría 0 $");
+  if (R.porClip != null) motivos.push(`Cada clip aprobado ha cobrado ${R.porClip.toFixed(2)} $ de media (${fmtNum(R.gastado)} $ pagados entre ${fmtNum(c.aprobados)} clips)`);
+  else motivos.push(clipMedio ? `Un clip medio cobraría ~${clipMedio.toFixed(2)} $` : "Un clip medio no llega al mínimo: cobraría 0 $");
   if (pctPagadas != null) motivos.push(`Se han pagado ${Math.round(pctPagadas * 100)} % de sus vistas`);
+  else if (pctBruto != null) motivos.push("Whop da un dato raro de vistas pagadas (más que vistas totales): no se tiene en cuenta");
+  if (R.diasVida != null) motivos.push(R.diasVida < DIAS_MINIMOS ? `A su ritmo de gasto se queda sin dinero en ~${Math.max(1, Math.round(R.diasVida))} días` : `Le quedan ~${R.diasVida > 365 ? "más de 365" : fmtNum(R.diasVida)} días de presupuesto a su ritmo de gasto`);
   if (c.medioPorClipper != null) motivos.push(`Cada clipper ha ganado ${c.medioPorClipper.toFixed(2)} $ de media`);
   if (hundida) motivos.push(`Saturada: siguen entrando clips pero sus vistas se han hundido (${fmtNum(c.ult7)} en 7 días frente a ${fmtNum(c.pico7)} en su mejor semana)`);
   else if (parada) motivos.push(`Parada: ningún clip aprobado en 14 días (${fmtNum(c.ult7)} vistas esta semana). Quedan ${fmtNum(c.restante)} $: puede ser una oportunidad o que el contenido ya no tire`);
   else if (creciendo) motivos.push(`Va a más: ${fmtNum(c.ult7)} vistas en 7 días (${fmtNum(c.prev7)} la semana anterior)`);
   motivos.push(`Quedan ${fmtNum(porClipper)} $ por clipper`);
   let tipo = "duda";
-  if ((min && vpc < min * 0.8) || hundida || porClipper < 3 || c.restante < 50) tipo = "no";
-  else if (clipMedio >= 2.5 && (pctPagadas == null || pctPagadas >= 0.4)) tipo = "si";
+  if ((min && vpc < min * 0.8) || hundida || porClipper < 3 || c.restante < 50 || (R.diasVida != null && R.diasVida < 7)) tipo = "no";
+  else if (porClip >= 2.5 && (pctPagadas == null || pctPagadas >= 0.4)) tipo = "si";
   const etiqueta = { si: "Renta", duda: "Dudosa", no: "No renta" }[tipo];
-  return { tipo, etiqueta, motivos, clipMedio, pctPagadas, hundida, parada, creciendo };
+  return { tipo, etiqueta, motivos, clipMedio, porClip, pctPagadas, hundida, parada, creciendo };
 }
 const COLOR_VEREDICTO = { si: "verde", duda: "ambar", no: "rosa", nueva: "cian", sindatos: "" };
 
@@ -452,7 +574,7 @@ function abrirInforme(id) {
   const tienes = D.campanas.some((k) => k.radarId === c.id);
   abrirModal(
     `<h3 style="margin-bottom:2px" data-sinfoco>${esc(c.nombre)}</h3>
-    <div class="peq">${esc(c.org)} · ${c.plat} · ${IDIOMAS[c.idioma] || c.idioma}${c.idiomaFuente === "oficial" ? "" : " (detectado)"} · puntuación ${ev.puntos}</div>
+    <div class="peq">${esc(c.org)} · ${c.plat} · ${IDIOMAS[c.idioma] || c.idioma}${c.idiomaFuente === "oficial" ? "" : " (detectado)"} · rentabilidad ${ev.puntos}/100</div>
     <div class="tarjeta" style="margin-top:12px;border-color:var(--${COLOR_VEREDICTO[v.tipo] === "rosa" ? "rosa" : COLOR_VEREDICTO[v.tipo] === "verde" ? "verde" : COLOR_VEREDICTO[v.tipo] === "ambar" ? "ambar" : "borde"})">
       <span class="chip ${COLOR_VEREDICTO[v.tipo]}" style="font-size:14px">${v.etiqueta}</span>
       <ul style="margin:10px 0 0;padding-left:18px">${v.motivos.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>
@@ -464,7 +586,9 @@ function abrirInforme(id) {
       ${c.plat === "Whop" ? `
       <div><span>Clippers</span><b>${fmtNum(c.clippers)}</b><small>${fmtNum(c.aprobados)} clips aprobados</small></div>
       <div><span>Vistas por clip</span><b>${c.vistasPorClip == null ? "—" : fmtNum(c.vistasPorClip)}</b><small>media de los aprobados</small></div>
-      <div><span>Vistas pagadas</span><b>${c.vistas ? Math.round((c.vistasPagadas / c.vistas) * 100) + " %" : "—"}</b><small>${fmtCorto(c.vistasPagadas)} de ${fmtCorto(c.vistas)}</small></div>
+      <div><span>Vistas pagadas</span><b>${c.vistas && c.vistasPagadas <= c.vistas ? Math.round((c.vistasPagadas / c.vistas) * 100) + " %" : "—"}</b><small>${c.vistas && c.vistasPagadas > c.vistas ? "dato raro de Whop: no se usa" : `${fmtCorto(c.vistasPagadas)} de ${fmtCorto(c.vistas)}`}</small></div>
+      <div><span>Por clip aprobado</span><b>${ev.rent.porClip == null ? "—" : ev.rent.porClip.toFixed(2) + " $"}</b><small>${ev.rent.porClip == null ? "menos de 10 clips aprobados" : "presupuesto gastado ÷ clips"}</small></div>
+      <div><span>Se agota en</span><b>${ev.rent.diasVida == null ? "—" : ev.rent.diasVida > 365 ? "+1 año" : "~" + fmtNum(ev.rent.diasVida) + " días"}</b><small>a su ritmo de gasto</small></div>
       <div><span>Gana un clipper</span><b>${c.medioPorClipper == null ? "—" : c.medioPorClipper.toFixed(2) + " $"}</b><small>de media</small></div>
       <div><span>El que más gana</span><b>${c.topGanadores?.[0] ? c.topGanadores[0].ganado.toFixed(2) + " $" : "—"}</b><small>${c.topGanadores?.[0] ? `${c.topGanadores[0].clips} clips` : ""}</small></div>` : ""}
     </div>
