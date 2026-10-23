@@ -620,7 +620,7 @@ function abrirInforme(id) {
     }
     <h3>¿Cuánto ganarías?</h3>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input type="number" id="inf-vistas" min="0" value="${c.vistasPorClip || c.minVistas || 1000}" style="width:150px" /> <span>vistas en un clip →</span> <b id="inf-res"></b></div>
-    <p class="peq">Con las condiciones de la campaña (mínimo, máximo y tarifa en TikTok)${n(D.ajustes.usdEur) ? " y tu cambio del dólar" : ""}.</p>
+    <p class="peq">Con las condiciones de la campaña (mínimo, máximo y tarifa en TikTok), pasado a euros con el ${esc(textoCambio())}.</p>
     <div id="inf-ia"></div>
     <div class="modal-pie"><div><a class="btn" href="${esc(c.enlace)}" target="_blank">Abrir en ${c.plat} ↗</a> ${window.ia ? `<button class="btn" id="inf-ia-btn">✨ Analizar con IA</button>` : ""}</div>
     <div><button class="btn" id="m-cancelar">Cerrar</button> ${tienes ? "" : `<button class="btn prim" id="inf-anadir">+ Añadir a mis campañas</button>`}</div></div>`,
@@ -629,8 +629,8 @@ function abrirInforme(id) {
         const x = n(caja.querySelector("#inf-vistas").value);
         let g = x < (c.minVistas || 0) ? 0 : (x / 1000) * c.tarifa;
         if (c.maxPago) g = Math.min(g, c.maxPago);
-        const eur = g * (n(D.ajustes.usdEur) || 1) * (1 - n(D.ajustes.comision) / 100);
-        caja.querySelector("#inf-res").textContent = x < (c.minVistas || 0) ? `0 $ (no llega al mínimo de ${fmtNum(c.minVistas)})` : `${g.toFixed(2)} $${n(D.ajustes.usdEur) ? ` ≈ ${fmtEur(eur)}` : ""}`;
+        const eur = g * (cambioUsd() || 1) * (1 - n(D.ajustes.comision) / 100);
+        caja.querySelector("#inf-res").textContent = x < (c.minVistas || 0) ? `0 $ (no llega al mínimo de ${fmtNum(c.minVistas)})` : `${g.toFixed(2)} $${cambioUsd() ? ` ≈ ${fmtEur(eur)}${n(D.ajustes.comision) ? " (ya sin tu comisión)" : ""}` : ""}`;
       };
       caja.querySelector("#inf-vistas").oninput = calc;
       calc();

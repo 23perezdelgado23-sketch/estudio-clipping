@@ -32,7 +32,7 @@ function gananciaConVistas(clip, vistas) {
   if (n(c.minVistas) && v < n(c.minVistas)) return 0;
   let g = (v / 1000) * n(c.cpm);
   if (n(c.maxPorClip)) g = Math.min(g, n(c.maxPorClip));
-  if (c.moneda === "USD") g *= n(D.ajustes.usdEur) || 1;
+  if (c.moneda === "USD") g *= cambioUsd() || 1;
   return g * (1 - n(D.ajustes.comision) / 100);
 }
 

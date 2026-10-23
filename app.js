@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.15.1";
+const VERSION_APP = "4.16";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -83,6 +83,65 @@ const fmtMon = (v, m) => n(v).toLocaleString("es-ES", { style: "currency", curre
 const fechaLocal = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const hoyISO = () => fechaLocal(new Date());
 const fechaCorta = (s) => (s ? new Date(s).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : "—");
+
+// ---------- Euros ----------
+// Cambio del dólar a euros: el que pongas en Ajustes o, si lo dejas vacío, el oficial del día del Banco Central Europeo
+// (lo publica Frankfurter, api.frankfurter.dev, gratis y sin cuenta). Se guarda en este dispositivo y se renueva una vez al día.
+let CAMBIO = (() => {
+  try {
+    return JSON.parse(localStorage.getItem("cambio:usdEur")) || {};
+  } catch {
+    return {};
+  }
+})();
+const cambioUsd = () => n(D.ajustes.usdEur) || n(CAMBIO.v);
+async function actualizarCambio() {
+  if (CAMBIO.f === hoyISO() || !navigator.onLine) return;
+  try {
+    const j = await (await fetch("https://api.frankfurter.dev/v1/latest?from=USD&to=EUR")).json();
+    const v = n(j?.rates?.EUR);
+    if (v < 0.5 || v > 1.5) return;
+    CAMBIO = { v, f: hoyISO(), fecha: j.date };
+    try {
+      localStorage.setItem("cambio:usdEur", JSON.stringify(CAMBIO));
+    } catch {}
+    typeof seccion === "string" && ir(seccion);
+  } catch {}
+}
+const textoCambio = () => (n(D.ajustes.usdEur) ? `tu cambio: 1 $ = ${n(D.ajustes.usdEur).toLocaleString("es-ES")} €` : CAMBIO.v ? `cambio oficial del BCE del ${fechaCorta(CAMBIO.fecha || CAMBIO.f)}: 1 $ = ${CAMBIO.v.toLocaleString("es-ES", { maximumFractionDigits: 4 })} €` : "sin cambio del dólar todavía");
+
+// Al lado de cualquier importe en dólares que se vea en la app, su equivalente en euros: «12,50 $ (≈11,17 €)».
+// Entiende «1,25 $», «3.313 $», «0.60 $/1.000», «12,50 US$» y, en las descripciones en inglés de las campañas, «$4» o «$1,000».
+// (si detrás ya hay «≈», con o sin «/1.000», no se vuelve a convertir: da igual pasar dos veces por el mismo texto)
+const RX_USD = /(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)([\s ]?)(?:US)?\$(?!(?:\s?\/\s?(?:1\.000|1K|1k|1000)\b)?[\s ]*\(?≈)(\s?\/\s?(?:1\.000|1K|1k|1000)\b)?|\$(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)(?![\d.,]*[\s ]*\(?≈)/g;
+const eurCorto = (v) => (v < 100 ? v.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(v).toLocaleString("es-ES")) + " €";
+function conEuros(texto) {
+  const k = cambioUsd();
+  if (!k || !texto.includes("$")) return texto;
+  return texto.replace(RX_USD, (todo, numEs, esp, unidad, numEn) => {
+    let v;
+    if (numEn != null) v = +numEn.replace(/,/g, "");
+    else if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(numEs)) v = +numEs.replace(/\./g, "").replace(",", ".");
+    else v = +numEs.replace(",", ".");
+    return Number.isFinite(v) ? `${todo} (≈${eurCorto(v * k)})` : todo;
+  });
+}
+const SIN_EUROS = new Set(["SCRIPT", "STYLE", "TEXTAREA", "INPUT", "OPTION", "SELECT"]);
+function eurosEn(nodo) {
+  if (!cambioUsd() || !nodo) return;
+  if (nodo.nodeType === 3) nodo = nodo.parentNode;
+  if (!nodo || nodo.nodeType !== 1) return;
+  const w = document.createTreeWalker(nodo, NodeFilter.SHOW_TEXT, {
+    acceptNode: (t) => (!t.nodeValue.includes("$") || !t.parentElement || SIN_EUROS.has(t.parentElement.tagName) || t.parentElement.closest(".sin-euros,[contenteditable]") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
+  const textos = [];
+  while (w.nextNode()) textos.push(w.currentNode);
+  textos.forEach((t) => {
+    const nuevo = conEuros(t.nodeValue);
+    if (nuevo !== t.nodeValue) t.nodeValue = nuevo;
+  });
+}
+new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach(eurosEn))).observe(document.documentElement, { childList: true, subtree: true });
 
 let temporizador;
 function guardar() {
@@ -158,10 +217,10 @@ function gananciaClip(clip) {
   if (n(c.minVistas) && vistas < n(c.minVistas)) return 0;
   let g = (vistas / 1000) * n(c.cpm);
   if (n(c.maxPorClip)) g = Math.min(g, n(c.maxPorClip));
-  if (c.moneda === "USD") g *= n(D.ajustes.usdEur) || 1;
+  if (c.moneda === "USD") g *= cambioUsd() || 1;
   return g * (1 - n(D.ajustes.comision) / 100);
 }
-const aEur = (importe, moneda) => (moneda === "USD" ? n(importe) * (n(D.ajustes.usdEur) || 1) : n(importe));
+const aEur = (importe, moneda) => (moneda === "USD" ? n(importe) * (cambioUsd() || 1) : n(importe));
 
 function totalesCampana(c) {
   const clips = D.clips.filter((x) => x.campanaId === c.id);
@@ -355,7 +414,7 @@ function tareasHoy() {
   const hace30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
   const sinApuntar = D.clips.filter((c) => CUENTAN_VISTAS.includes(c.estado) && (c.fechaPub || "").slice(0, 10) >= hace30 && (c.historial || []).slice(-1)[0]?.f !== hoy).length;
   if (sinApuntar) add("numeros", `Apunta las vistas de hoy de <b>${sinApuntar}</b> clip(s).`, "Apuntar", "numeros");
-  if (D.campanas.some((c) => c.moneda === "USD") && !n(D.ajustes.usdEur)) add("cobros", "Pon el cambio del dólar en Ajustes para pasar a euros lo que pagan las campañas.", "Ajustes", "ajustes");
+  if (D.campanas.some((c) => c.moneda === "USD") && !cambioUsd()) add("cobros", "Conéctate a internet un momento para coger el cambio oficial del dólar, o ponlo a mano en Ajustes.", "Ajustes", "ajustes");
   return t;
 }
 
@@ -1550,7 +1609,7 @@ function vistaCalculadora() {
           <label class="ancho">Rellenar con una de mis campañas<select id="k-camp">${opciones(D.campanas.map((c) => [c.id, c.nombre]), "", "No, lo pongo a mano")}</select></label>
           <label>Tarifa por cada 1.000 vistas<input id="k-cpm" type="number" step="0.01" min="0" placeholder="Ej.: 1" /></label>
           <label>Moneda de la tarifa<select id="k-mon">${opciones([["USD", "Dólares ($)"], ["EUR", "Euros (€)"]], "USD")}</select></label>
-          <label class="ancho" id="k-cambio-l">Cuántos euros vale 1 dólar hoy<input id="k-cambio" type="number" step="0.001" min="0" value="${v(D.ajustes.usdEur)}" placeholder="Búscalo en Google: «1 dólar en euros»" /></label>
+          <label class="ancho" id="k-cambio-l">Cuántos euros vale 1 dólar hoy<input id="k-cambio" type="number" step="0.001" min="0" value="${v(cambioUsd() || "")}" placeholder="Sin internet: búscalo en Google («1 dólar en euros»)" /></label>
           <label>Mínimo de vistas por clip<input id="k-min" type="number" min="0" placeholder="Si la campaña no pone, déjalo vacío" /></label>
           <label>Máximo a cobrar por clip<input id="k-max" type="number" min="0" step="0.01" placeholder="Si la campaña no pone, déjalo vacío" /></label>
         </div>
@@ -1829,7 +1888,7 @@ function vistaAjustes() {
       <p class="peq" style="margin-top:0">Todo es opcional. Lo que dejes vacío, la app no lo usa.</p>
       <div class="form">
         <label>Tu nombre<input name="nombre" value="${esc(a.nombre)}" /></label>
-        <label>Cuántos euros vale 1 dólar hoy<input name="usdEur" type="number" step="0.001" min="0" value="${esc(a.usdEur)}" placeholder="Búscalo en Google: «1 dólar en euros»" /></label>
+        <label>Cuántos euros vale 1 dólar<input name="usdEur" type="number" step="0.001" min="0" value="${esc(a.usdEur)}" placeholder="${CAMBIO.v ? "Vacío = oficial de hoy: " + CAMBIO.v.toLocaleString("es-ES", { maximumFractionDigits: 4 }) : "Vacío = cambio oficial del día"}" /><span class="peq sin-euros">Déjalo vacío para usar el cambio oficial del Banco Central Europeo, que se actualiza solo cada día. Ahora: ${esc(textoCambio())}.</span></label>
         <label>Objetivo de clips al día (todas las cuentas)<input name="objetivoDia" type="number" min="0" value="${esc(a.objetivoDia)}" placeholder="Ej.: 8" /></label>
         <label>Idioma de tus cuentas (Radar)<select name="idiomaRadar">${opciones(Object.entries(IDIOMAS), a.idiomaRadar || "es")}</select></label>
         <label>Objetivo de ingresos al mes (€)<input name="objetivoMes" type="number" min="0" value="${esc(a.objetivoMes)}" placeholder="Ej.: 300" /></label>
@@ -1941,6 +2000,7 @@ const VISTAS = {
   setTimeout(() => buscarVersionMac(), 4000);
   window.addEventListener("hashchange", () => irEnlace(location.hash.slice(1)));
   window.nube && nube.iniciar();
+  actualizarCambio();
   setTimeout(() => importarPerfilesPrivados(), 6000);
   // En el Mac, el radar se lee solo si la última lectura tiene más de 6 horas (y se revisa cada 30 minutos)
   if (window.estudio.radar) {
