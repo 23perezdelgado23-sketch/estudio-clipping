@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.14";
+const VERSION_APP = "4.15";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -1405,6 +1405,7 @@ function editarCuenta(a) {
       <label>Seguidores<input name="seguidores" type="number" min="0" value="${esc(a.seguidores)}" /></label>
       <label>Clips al día (objetivo)<input name="objetivoDia" type="number" min="0" value="${esc(a.objetivoDia)}" placeholder="Para el Calendario" /></label>
       <label>Horas de publicación<input name="horas" value="${esc(a.horas)}" placeholder="13:00, 19:30, 21:30" /></label>
+      <label>Idiomas de sus campañas (Radar)<select name="idiomas">${opciones([["", "El del Radar (Ajustes)"], ["es", "Español"], ["en", "Inglés"], ["es,en", "Español e inglés"]], a.idiomas || "")}</select></label>
       <label class="ancho">Palabras clave del nicho (para el Radar)<input name="claves" value="${esc(a.claves)}" placeholder="Separadas por comas: podcast, emprendimiento, trading…" /></label>
 
       <label>Estado<select name="estado">${opciones([["calentando", "Calentando (cuenta nueva)"], ["activa", "Activa"], ["pausada", "Pausada"]], a.estado)}</select></label>

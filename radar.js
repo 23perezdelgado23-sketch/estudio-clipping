@@ -29,6 +29,9 @@ let radarLeyendo = false;
 
 const radar = () => (D.radar ||= { actualizado: "", items: [], vistos: {}, errores: [] });
 const idiomaObjetivo = () => D.ajustes.idiomaRadar || "es";
+// Idiomas de campañas que acepta cada cuenta (en su ficha); si no tiene, el idioma del Radar (Ajustes).
+// Por ejemplo, la cuenta de música puede trabajar campañas en español y en inglés: la música no necesita entenderse.
+const idiomasCuenta = (a) => (a?.idiomas ? a.idiomas.split(",").map((x) => x.trim()).filter(Boolean) : [idiomaObjetivo()]);
 
 function clavesCuenta(a) {
   const propias = (a.claves || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
@@ -51,7 +54,7 @@ const diasHasta = (f) => (f ? Math.ceil((new Date(f) - new Date(hoyISO())) / 864
 // Estados de clip con vistas reales (los mismos que CUENTAN_VISTAS en app.js; aquí aparte porque el servidor usa este archivo solo)
 const ESTADOS_CON_VISTAS = ["publicado", "enviado", "aprobado"];
 // Campañas que exigen una cuenta solo para ellas (como Daniel Curto): en ese caso no sirve una cuenta de nicho con varios creadores
-const DEDICADA = /p[áa]gina dedicada|cuenta dedicada|p[áa]gina exclusiva|dedicated (page|account)|fan ?page/i;
+const DEDICADA = /p[áa]gina dedicada|cuenta dedicada|p[áa]gina exclusiva|dedicated (page|account|clipping)|fan ?page/i;
 const DIAS_MINIMOS = 10;
 // Campañas que piden público de un país concreto: con cuentas que trabajan desde España es difícil cumplirlo
 const PUBLICO_PAIS = [
@@ -99,7 +102,7 @@ function publicoPais(c) {
 function dedicada(c) {
   const k = (D.campanas || []).find((x) => x.radarId === c.id);
   if (k?.paginaDedicada) return "si";
-  return DEDICADA.test(c.desc || "") ? "posible" : "";
+  return DEDICADA.test(`${c.nombre} ${c.desc || ""}`) ? "posible" : "";
 }
 
 // La cuenta con la que trabajas una campaña (la que pusiste en su ficha), si la has añadido
@@ -141,7 +144,7 @@ function puntuar(c, cuentaObj) {
   if (c.clippers != null && c.clippers <= 10) motivos.push(c.clippers ? `Solo ${c.clippers} clippers` : "Nadie trabaja en ella aún");
   p += v.creciendo ? 10 : v.hundida ? 0 : v.parada ? 3 : 5;
   if (v.creciendo) motivos.push("Sus vistas van a más");
-  if (c.idioma === idiomaObjetivo()) p += 5;
+  if (cuentaObj ? idiomasCuenta(cuentaObj).includes(c.idioma) : c.idioma === idiomaObjetivo()) p += 5;
   if (cuentaObj && (encaje(c, cuentaObj) || cuentaAsignada(c)?.id === cuentaObj.id)) (p += 5), motivos.push(`Para ${cuentaObj.usuario}`);
   if (c.solicitud) p -= 5;
   if (c.bloqueada) p -= 20;
@@ -161,22 +164,23 @@ function mejorCuenta(c) {
   if (dedicada(c) === "si") return null;
   let mejor = null, max = 0;
   D.cuentas.forEach((a) => {
+    if (!idiomasCuenta(a).includes(c.idioma)) return;
     const e = encaje(c, a);
     if (e > max) (max = e), (mejor = a);
   });
   return mejor;
 }
 
-// Se puede recomendar: tu idioma, paga en TikTok, no bloqueada, sin apuestas ni política y con tiempo para cobrar
-function recomendable(c, R = rentabilidad(c)) {
+// Se puede recomendar: en un idioma de la cuenta (o del Radar), paga en TikTok, no bloqueada, sin apuestas ni política y con tiempo para cobrar
+function recomendable(c, R = rentabilidad(c), a = null) {
   const t = textoCampana(c);
-  return c.idioma === idiomaObjetivo() && R.tiktok && !publicoPais(c) && !c.bloqueada && !RIESGO.test(t) && !POLITICA.test(t) && n(c.restante) >= 100 && (R.diasVida == null || R.diasVida >= DIAS_MINIMOS);
+  return (a ? idiomasCuenta(a).includes(c.idioma) : c.idioma === idiomaObjetivo()) && R.tiktok && !publicoPais(c) && !c.bloqueada && !RIESGO.test(t) && !POLITICA.test(t) && n(c.restante) >= 100 && (R.diasVida == null || R.diasVida >= DIAS_MINIMOS);
 }
 
 function evaluar(c) {
   const a = mejorCuenta(c);
   const r = puntuar(c, a);
-  const joya = r.puntos >= 60 && recomendable(c, r.rent) && n(c.restante) >= 200 && (!D.cuentas.length || !!a) && veredicto(c).tipo !== "no";
+  const joya = r.puntos >= 60 && recomendable(c, r.rent, a) && n(c.restante) >= 200 && (!D.cuentas.length || !!a) && veredicto(c).tipo !== "no";
   return { ...c, cuentaSug: a, ...r, joya };
 }
 
@@ -238,8 +242,10 @@ function procesarRadar(r, silencioso) {
   r.items.forEach((c) => (R.vistos[c.id] ||= r.actualizado));
   // Se guardan todas las del idioma elegido y, del resto, las mejores (para no hacer pesada la sincronización)
   const evaluados = r.items.map(evaluar).sort((a, b) => b.puntos - a.puntos);
-  const propias = evaluados.filter((c) => c.idioma === idiomaObjetivo());
-  const resto = evaluados.filter((c) => c.idioma !== idiomaObjetivo()).slice(0, Math.max(0, RADAR_MAX - propias.length));
+  // Se guardan todas las del idioma del Radar, las de otros idiomas de tus cuentas que encajan con ellas (hasta 80) y, del resto, las mejores
+  const deCuentas = evaluados.filter((c) => c.idioma !== idiomaObjetivo() && D.cuentas.some((a) => idiomasCuenta(a).includes(c.idioma) && encaje(c, a) > 0)).slice(0, 80);
+  const propias = [...evaluados.filter((c) => c.idioma === idiomaObjetivo()), ...deCuentas];
+  const resto = evaluados.filter((c) => !propias.includes(c)).slice(0, Math.max(0, RADAR_MAX - propias.length));
   R.items = [...propias, ...resto].map(({ cuentaSug, puntos, motivos, joya, rent, ...c }) => c);
   R.anterior = antes;
   R.actualizado = r.actualizado;
@@ -427,17 +433,17 @@ function tarjetasPorCuenta(todos) {
   if (!D.cuentas.length)
     return `<div class="tarjeta" style="margin-top:14px">Añade tus cuentas en <b>Cuentas</b> (con su nicho y, si quieres, palabras clave) y aquí verás las mejores campañas para cada una.</div>`;
   return `<h2>Lo mejor para cada cuenta</h2>
-  <p class="peq" style="margin-top:-6px">Ordenado por <b>rentabilidad real</b>: lo que ha cobrado cada clip aprobado, si tus clips llegan al mínimo, cuánto le queda de presupuesto y la competencia. Solo campañas en tu idioma, que pagan en TikTok, sin pedir público de otro país, que no salen como «No renta» y con al menos ${DIAS_MINIMOS} días de dinero.</p>
+  <p class="peq" style="margin-top:-6px">Ordenado por <b>rentabilidad real</b>: lo que ha cobrado cada clip aprobado, si tus clips llegan al mínimo, cuánto le queda de presupuesto y la competencia. Solo campañas en los idiomas de cada cuenta (en su ficha), que pagan en TikTok, sin pedir público de otro país, que no salen como «No renta» y con al menos ${DIAS_MINIMOS} días de dinero.</p>
   <div class="rejilla dos">${D.cuentas
     .map((a) => {
       const claves = clavesCuenta(a);
       const vc = vistasCuenta(a);
       const top = todos
-        .filter((c) => recomendable(c) && veredicto(c).tipo !== "no" && (cuentaAsignada(c)?.id === a.id || (encaje(c, a) > 0 && dedicada(c) !== "si" && !cuentaAsignada(c))))
+        .filter((c) => recomendable(c, undefined, a) && veredicto(c).tipo !== "no" && (cuentaAsignada(c)?.id === a.id || (encaje(c, a) > 0 && dedicada(c) !== "si" && !cuentaAsignada(c))))
         .map((c) => ({ ...c, ...puntuar(c, a) }))
         .sort((x, y) => y.puntos - x.puntos)
         .slice(0, 3);
-      return `<div class="tarjeta"><div><b>${esc(a.usuario)}</b> <span class="peq">· ${esc(a.nicho || "sin nicho")}</span></div>
+      return `<div class="tarjeta"><div><b>${esc(a.usuario)}</b> <span class="peq">· ${esc(a.nicho || "sin nicho")} · ${idiomasCuenta(a).map((x) => IDIOMAS[x] || x).join(" e ")}</span></div>
         <div class="peq" style="margin:2px 0 6px">${vc != null ? `Tus clips: ${fmtNum(vc)} vistas de media` : "Cuenta nueva: se priorizan las que cobran con pocas vistas"}</div>
         ${
           !claves.length && !todos.some((c) => cuentaAsignada(c)?.id === a.id)
@@ -451,7 +457,7 @@ function tarjetasPorCuenta(todos) {
                   }</div><button class="btn peq" data-informe="${c.id}">Ver</button></div>`;
                 })
                 .join("")
-            : `<p class="peq">Ahora mismo no hay campañas en ${IDIOMAS[idiomaObjetivo()]} que encajen con esta cuenta y le den tiempo a cobrar.</p>`
+            : `<p class="peq">Ahora mismo no hay campañas en ${idiomasCuenta(a).map((x) => IDIOMAS[x] || x).join(" ni en ")} que encajen con esta cuenta y le den tiempo a cobrar.</p>`
         }</div>`;
     })
     .join("")}</div>`;
