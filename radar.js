@@ -56,6 +56,7 @@ const ESTADOS_CON_VISTAS = ["publicado", "enviado", "aprobado"];
 // Campañas que exigen una cuenta solo para ellas (como Daniel Curto): en ese caso no sirve una cuenta de nicho con varios creadores
 const DEDICADA = /p[áa]gina dedicada|cuenta dedicada|p[áa]gina exclusiva|dedicated (page|account|clipping)|fan ?page/i;
 const DIAS_MINIMOS = 10;
+const POR_CUENTA = 6; // campañas que se enseñan en «Lo mejor para cada cuenta»
 // Campañas que piden público de un país concreto: con cuentas que trabajan desde España es difícil cumplirlo
 const PUBLICO_PAIS = [
   [/mexic|m[ée]xico|🇲🇽/i, "México"],
@@ -427,7 +428,7 @@ function lineaRentabilidad(c, R = rentabilidad(c)) {
     .join(" · ");
 }
 
-// Las 3 mejores para cada cuenta, ordenadas por lo que le pueden dar a esa cuenta (con sus vistas, si ya tiene clips).
+// Las mejores para cada cuenta (POR_CUENTA), ordenadas por lo que le pueden dar a esa cuenta (con sus vistas, si ya tiene clips).
 // Las campañas que exigen página dedicada solo salen en la cuenta que les asignes en su ficha.
 function tarjetasPorCuenta(todos) {
   if (!D.cuentas.length)
@@ -442,7 +443,7 @@ function tarjetasPorCuenta(todos) {
         .filter((c) => recomendable(c, undefined, a) && veredicto(c).tipo !== "no" && (cuentaAsignada(c)?.id === a.id || (encaje(c, a) > 0 && dedicada(c) !== "si" && !cuentaAsignada(c))))
         .map((c) => ({ ...c, ...puntuar(c, a) }))
         .sort((x, y) => y.puntos - x.puntos)
-        .slice(0, 3);
+        .slice(0, POR_CUENTA);
       return `<div class="tarjeta"><div><b>${esc(a.usuario)}</b> <span class="peq">· ${esc(a.nicho || "sin nicho")} · ${idiomasCuenta(a).map((x) => IDIOMAS[x] || x).join(" e ")}</span></div>
         <div class="peq" style="margin:2px 0 6px">${vc != null ? `Tus clips: ${fmtNum(vc)} vistas de media` : "Cuenta nueva: se priorizan las que cobran con pocas vistas"}</div>
         ${
