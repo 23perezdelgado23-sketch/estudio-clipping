@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.16";
+const VERSION_APP = "4.17";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -509,7 +509,7 @@ function vistaPanel() {
             ? joyas
                 .map((c) => {
                   const v = veredicto(c);
-                  return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 65 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${c.tarifa.toFixed(2)} $/1.000 · <span class="txt-${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>${c.cuentaSug ? ` · ${esc(c.cuentaSug.usuario)}` : ""}</div></div><button class="btn peq" data-informe="${c.id}">Informe</button></div>`;
+                  return `<div class="radar-mini"><span class="radar-p ${c.puntos >= 60 ? "alta" : ""}" style="--p:${c.puntos}">${c.puntos}</span><div style="flex:1;min-width:0"><div class="radar-mini-t">${esc(c.nombre)}</div><div class="peq">${c.plat} · ${lineaRentabilidad(c, c.rent)} · <span class="txt-${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>${c.cuentaSug ? ` · ${esc(c.cuentaSug.usuario)}` : ""}</div></div><button class="btn peq" data-informe="${c.id}">Informe</button></div>`;
                 })
                 .join("")
             : `<div class="vacio-mini">${icono("radar")}<div>${D.radar?.items?.length ? "No hay joyas nuevas para tus cuentas ahora mismo." : "El radar aún no se ha leído (lo lee el servidor cada 3 horas al entrar con tu cuenta)."}</div></div>`
@@ -1842,7 +1842,7 @@ function vistaGuia() {
   <h2 id="g5">Cuentas</h2>
   <ul>
     <li><b>Tu plan:</b> tú solo, con 5 cuentas de un nicho cada una (Estrategia → Las 5 cuentas), cada una con su Gmail. Empiezas publicando en Dinero, Música y Textos, y sumas Negocios y Creadores en la segunda semana.</li>
-    <li>Una cuenta por nicho: TikTok entiende mejor a quién enseñar tus clips. Una cuenta puede estar en varias campañas del mismo nicho a la vez, y cuando una se acaba pasas a otra del mismo tema.</li>
+    <li>Una cuenta por nicho: TikTok entiende mejor a quién enseñar tus clips. Una cuenta puede estar en varias campañas del mismo nicho a la vez (salvo las que exigen página dedicada a un creador), y cuando una se acaba pasas a otra del mismo tema.</li>
     <li>Cuenta nueva = estado <b>«Calentando»</b>: úsala con normalidad unos días antes de publicar en serie.</li>
     <li>No compres seguidores ni vistas, ni interactúes entre tus propias cuentas. Las campañas tienen revisiones antibots y te pueden retener o anular el pago.</li>
     <li>TikTok permite varias cuentas, pero ante una infracción grave puede bloquear todas las asociadas. Todas las normas, en <b>Primeros pasos → Que no te baneen</b>.</li>

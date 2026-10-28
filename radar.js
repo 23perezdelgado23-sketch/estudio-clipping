@@ -6,7 +6,7 @@
 const RADAR_MAX = 120; // campañas guardadas (todas las del idioma elegido y las mejores del resto)
 const RADAR_HORAS = 6; // el Mac la actualiza solo si la última lectura tiene más de 6 horas
 const IDIOMAS = { es: "Español", en: "Inglés", pt: "Portugués", fr: "Francés", it: "Italiano", de: "Alemán", nl: "Neerlandés" };
-const RIESGO = /gambl|casino|betting|apuesta|\bbet\b|crypto|cripto|forex|onlyfans/i;
+const RIESGO = /gambl|casino|betting|apuesta|\bbet\b|blackjack|poker|p[óo]quer|roulette|ruleta|slots?\b|tragaperras|sportsbook|crypto|cripto|forex|onlyfans/i;
 // TikTok no deja cobrar por contenido político de marca (Normas de la comunidad, «Integridad de procesos cívicos y electorales»)
 const POLITICA = /politic|polític|elecci|election|anti-élite|\bélites?\b/i;
 
@@ -43,10 +43,16 @@ function textoCampana(c) {
   return `${c.nombre} ${c.org} ${c.desc} ${(c.cats || []).join(" ")}`.toLowerCase();
 }
 
-// Cuántas palabras del nicho de la cuenta aparecen en la campaña
+// Palabras demasiado generales: solas no bastan para decir que una campaña es de un nicho
+// («trending» sale en campañas de streamers y «meme» en las de un cristal de coche); suman medio punto
+const CLAVES_DEBILES = new Set(["trend", "tendencia", "meme", "viral", "sound", "reto", "challenge", "historia", "story"]);
+const escRx = (k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Cuánto encaja la campaña con el nicho de la cuenta: cada palabra clave que aparece al principio de una palabra suma 1
+// (las generales, 0,5). «reto» ya no encaja con «secreto», ni «ceo» con otra palabra. Por debajo de 1 no encaja (0).
 function encaje(c, a) {
   const t = textoCampana(c);
-  return clavesCuenta(a).filter((k) => t.includes(k)).length;
+  const p = clavesCuenta(a).reduce((s, k) => s + (new RegExp(`(^|[^a-z0-9áéíóúüñ])${escRx(k)}`, "i").test(t) ? (CLAVES_DEBILES.has(k) ? 0.5 : 1) : 0), 0);
+  return p >= 1 ? p : 0;
 }
 
 const diasHasta = (f) => (f ? Math.ceil((new Date(f) - new Date(hoyISO())) / 864e5) : null);
@@ -56,12 +62,15 @@ const ESTADOS_CON_VISTAS = ["publicado", "enviado", "aprobado"];
 // Campañas que exigen una cuenta solo para ellas (como Daniel Curto): en ese caso no sirve una cuenta de nicho con varios creadores
 const DEDICADA = /p[áa]gina dedicada|cuenta dedicada|p[áa]gina exclusiva|dedicated (page|account|clipping)|fan ?page/i;
 const DIAS_MINIMOS = 10;
-const POR_CUENTA = 6; // campañas que se enseñan en «Lo mejor para cada cuenta»
+const POR_CUENTA = 6;
+const MAX_PROPUESTAS = 5; // propuestas «por unirte» pendientes por cuenta, como mucho // campañas que se enseñan en «Lo mejor para cada cuenta»
 // Campañas que piden público de un país concreto: con cuentas que trabajan desde España es difícil cumplirlo
 const PUBLICO_PAIS = [
   [/mexic|m[ée]xico|🇲🇽/i, "México"],
   [/canad|🇨🇦/i, "Canadá"],
   [/\b(us|u\.s\.|usa|american|united states)\b[^.]{0,20}audienc|audienc[^.]{0,20}\b(us|usa|american|united states)\b|🇺🇸/i, "EE. UU."],
+  [/\buk\b|u\.k\.|united kingdom|british|britain|🇬🇧/i, "Reino Unido"],
+  [/australia|aussie|🇦🇺/i, "Australia"],
   [/brasil|brazil|🇧🇷/i, "Brasil"],
   [/argentin|🇦🇷/i, "Argentina"],
   [/colombia|🇨🇴/i, "Colombia"],
@@ -545,9 +554,9 @@ function veredicto(c) {
   // Lo que ha cobrado de verdad cada clip aprobado (presupuesto gastado ÷ clips aprobados); la media de vistas se infla con los virales
   const porClip = R.porClip ?? clipMedio;
   const caida = c.pico7 > 0 && c.ult7 < 0.15 * c.pico7 && c.prev7 > c.ult7;
-  const aprob14 = (c.serieAprob || []).slice(-14).reduce((a, b) => a + b, 0);
-  // Caída con clips nuevos entrando = el público se ha cansado (saturada). Sin clips nuevos = parada (nadie publica).
-  const parada = caida && !!c.serieAprob && aprob14 === 0;
+  const aprob7 = (c.serieAprob || []).slice(-7).reduce((a, b) => a + b, 0);
+  // Caída con clips nuevos entrando = el público se ha cansado (saturada). Sin clips aprobados en 7 días = frenada (casi nadie publica).
+  const parada = caida && !!c.serieAprob && aprob7 === 0;
   const hundida = caida && !parada;
   const creciendo = c.prev7 > 0 && c.ult7 > c.prev7 * 1.2;
   const porClipper = c.restante / ((c.clippers || 0) + 1);
@@ -559,13 +568,13 @@ function veredicto(c) {
   if (R.diasVida != null) motivos.push(R.diasVida < DIAS_MINIMOS ? `A su ritmo de gasto se queda sin dinero en ~${Math.max(1, Math.round(R.diasVida))} días` : `Le quedan ~${R.diasVida > 365 ? "más de 365" : fmtNum(R.diasVida)} días de presupuesto a su ritmo de gasto`);
   if (c.medioPorClipper != null) motivos.push(`Cada clipper ha ganado ${c.medioPorClipper.toFixed(2)} $ de media`);
   if (hundida) motivos.push(`Saturada: siguen entrando clips pero sus vistas se han hundido (${fmtNum(c.ult7)} en 7 días frente a ${fmtNum(c.pico7)} en su mejor semana)`);
-  else if (parada) motivos.push(`Parada: ningún clip aprobado en 14 días (${fmtNum(c.ult7)} vistas esta semana). Quedan ${fmtNum(c.restante)} $: puede ser una oportunidad o que el contenido ya no tire`);
+  else if (parada) motivos.push(`Frenada: ningún clip aprobado en 7 días (${fmtNum(c.ult7)} vistas esta semana frente a ${fmtNum(c.pico7)} en su mejor semana). Quedan ${fmtNum(c.restante)} $: puede ser una oportunidad (poca competencia) o que el contenido ya no tire`);
   else if (creciendo) motivos.push(`Va a más: ${fmtNum(c.ult7)} vistas en 7 días (${fmtNum(c.prev7)} la semana anterior)`);
   motivos.push(`Quedan ${fmtNum(porClipper)} $ por clipper`);
   let tipo = "duda";
   if ((min && vpc < min * 0.8) || hundida || porClipper < 3 || c.restante < 50 || (R.diasVida != null && R.diasVida < 7)) tipo = "no";
-  else if (porClip >= 2.5 && (pctPagadas == null || pctPagadas >= 0.4)) tipo = "si";
-  const etiqueta = { si: "Renta", duda: "Dudosa", no: "No renta" }[tipo];
+  else if (porClip >= 2.5 && (pctPagadas == null || pctPagadas >= 0.4) && !parada) tipo = "si";
+  const etiqueta = { si: "Renta", duda: "Dudosa", no: "No renta" }[tipo] + (hundida ? ": saturada" : parada ? ": frenada" : creciendo && tipo !== "no" ? ": va a más" : "");
   return { tipo, etiqueta, motivos, clipMedio, porClip, pctPagadas, hundida, parada, creciendo };
 }
 const COLOR_VEREDICTO = { si: "verde", duda: "ambar", no: "rosa", nueva: "cian", sindatos: "" };
@@ -683,14 +692,38 @@ function pilotoAutomatico(itemsTodos) {
       cambios.push(`Pausada «${k.nombre}»: ${v.hundida ? "sus vistas se han hundido" : "queda muy poco dinero por clipper"} (${v.motivos[0]})`);
     }
   });
-  // Joyas nuevas: hasta 5 por lectura, las mejores primero. Sin cuentas con nicho no se propone nada (no sabe qué te encaja).
+  // Propuestas pendientes: como mucho MAX_PROPUESTAS por cuenta. Las versiones anteriores proponían 5 en cada lectura sin tope
+  // (llegaron a juntarse 50): se quitan las peores de las que añadió el piloto, si no las has tocado ni tienen clips.
+  const pendientes = D.campanas.filter((k) => k.estado === "porunirte" && (k.notas || "").startsWith("Añadida por el piloto automático"));
+  const puntosDe = (k) => (porId[k.radarId] ? evaluar(porId[k.radarId]).puntos : -1);
+  const quitar = new Set();
+  // Las que el piloto asignó a una cuenta con la que ya no encajan (antes bastaba una palabra general como «trend»)
+  pendientes.forEach((k) => {
+    const c = porId[k.radarId], a = D.cuentas.find((x) => x.id === k.cuentaSugerida);
+    if (c && a && !encaje(c, a) && !D.clips.some((x) => x.campanaId === k.id)) quitar.add(k.id);
+  });
+  [...new Set(pendientes.map((k) => k.cuentaSugerida || ""))].forEach((cta) => {
+    pendientes
+      .filter((k) => (k.cuentaSugerida || "") === cta && !quitar.has(k.id) && !D.clips.some((x) => x.campanaId === k.id))
+      .sort((a, b) => puntosDe(b) - puntosDe(a))
+      .slice(MAX_PROPUESTAS)
+      .forEach((k) => quitar.add(k.id));
+  });
+  if (quitar.size) {
+    D.campanas = D.campanas.filter((k) => !quitar.has(k.id));
+    cambios.push(`Quitadas ${quitar.size} propuestas que sobraban: como mucho quedan ${MAX_PROPUESTAS} por cuenta, las mejores`);
+  }
+  const huecos = (a) => MAX_PROPUESTAS - D.campanas.filter((k) => k.estado === "porunirte" && k.cuentaSugerida === a.id).length;
+  // Joyas nuevas, las mejores primero, solo para las cuentas que tienen hueco. Sin cuentas con nicho no se propone nada (no sabe qué te encaja).
   const descartadas = radar().descartadas || {};
   const conNicho = D.cuentas.filter((a) => clavesCuenta(a).length);
+  const usados = {};
   const nuevas = (conNicho.length ? itemsTodos : [])
     .map(evaluar)
     .filter((c) => c.joya && c.cuentaSug && veredicto(c).tipo !== "no" && !descartadas[c.id] && !D.campanas.some((k) => k.radarId === c.id))
     .sort((a, b) => b.puntos - a.puntos)
-    .slice(0, 5);
+    .filter((c) => (usados[c.cuentaSug.id] = (usados[c.cuentaSug.id] || 0) + 1) <= huecos(c.cuentaSug))
+    .slice(0, MAX_PROPUESTAS);
   nuevas.forEach((c) => {
     D.campanas.push({
       id: uid(),

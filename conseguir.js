@@ -105,7 +105,7 @@ function tabElegir() {
     <tr><td><b>Fecha de fin</b></td><td>Los clips enviados tarde no cuentan.</td></tr>
     <tr><td><b>Quién paga</b></td><td>Que sea un creador o marca reconocible. Desconfía de lo que prometa ganancias seguras o te pida pagar para entrar.</td></tr>
   </tbody></table>
-  ${nota("<b>Puedes unirte a varias campañas del mismo nicho con la misma cuenta.</b> Cada clip va a una sola campaña, con su material y su etiqueta. Antes de cada una, comprueba en el Radar que le queda presupuesto y fecha: lo publicado tarde se rechaza.", "")}
+  ${nota("<b>Puedes unirte a varias campañas del mismo nicho con la misma cuenta</b>, salvo las que exigen página dedicada a un creador (como Daniel Curto). Cada clip va a una sola campaña, con su material y su etiqueta. Antes de cada una, comprueba en el Radar que le queda presupuesto y fecha: lo publicado tarde se rechaza.", "")}
   ${nota("Cuando te unas, apúntala en <b>Campañas</b> (+ Nueva campaña) con todos estos datos: así la app calcula lo que llevas ganado y te avisa cuando se acaba el presupuesto.", "cian")}`;
 }
 

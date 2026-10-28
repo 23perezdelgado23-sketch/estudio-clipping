@@ -261,13 +261,23 @@ function tabCobro() {
 
 // Las 5 campañas que más rentan para empezar (18/10/2026, con la puntuación y el veredicto de la propia app).
 // Whop estaba caído ese día: son los datos de su última lectura buena (18/10, 8:07).
-const MEJORES_CAMPANAS = [
-  ["Daniel Curto (trading y mentalidad)", "Dinero", "Renta · 83 puntos", "1,00 $ por 1.000 · cobras desde 1.000 vistas · un clip medio, unos 3,30 $ · dura hasta febrero de 2027 · 51 clippers"],
-  ["Pablo Pérez · Sobreviviendo en Bali con 100 €", "Creadores", "Renta · 73 puntos", "1,00 $ por 1.000 · cobras desde 10.000 vistas · un clip medio, unos 21,80 $ · hay que solicitarla · hasta diciembre"],
-  ["MY SONG SPANISH TREND (Duetti)", "Música", "Renta · 82 puntos", "1,25 $ por 1.000 · cobras desde 1.000 vistas · un clip medio, unos 16,90 $ · termina hacia el 27/10: después, la siguiente de Duetti"],
-  ["SPANISH TEXT TIKTOK (Duetti)", "Textos", "Nueva · 84 puntos", "1,25 $ por 1.000 · cobras desde 1.000 vistas · 1.000 $ sin estrenar y nadie trabajando en ella todavía"],
-  ["Pódcast de Víctor Rodríguez", "Negocios", "Dudosa · 76 puntos", "1,80 $ por 1.000 · solo 7 clippers · cobras desde unas 5.600 vistas, y su clip medio se queda justo ahí: hace falta que tus clips estén por encima de la media"],
-];
+// Las mejores campañas de ahora mismo, en directo desde el Radar (antes era una lista fija del 18/10 que se quedaba vieja)
+function mejoresAhora() {
+  const R = typeof radar === "function" ? radar() : null;
+  if (!R?.items?.length) return `<p class="peq">Abre el <b>Radar</b> y pulsa «Actualizar ahora» para ver aquí las mejores campañas de hoy.</p>`;
+  const top = R.items
+    .map(evaluar)
+    .filter((c) => c.cuentaSug && recomendable(c, c.rent, c.cuentaSug) && veredicto(c).tipo !== "no")
+    .sort((a, b) => b.puntos - a.puntos)
+    .slice(0, 6);
+  if (!top.length) return `<p class="peq">Ahora mismo ninguna campaña encaja con tus cuentas y les da tiempo a cobrar. Mira el Radar en unos días.</p>`;
+  return `<ol style="padding-left:20px">${top
+    .map((c) => {
+      const v = veredicto(c);
+      return `<li style="margin:8px 0"><b>${esc(c.nombre)}</b> <span class="chip ${COLOR_VEREDICTO[v.tipo]}">${esc(v.etiqueta)} · ${c.puntos}</span> <span class="chip">${esc(c.cuentaSug.usuario)}</span><div class="peq" style="margin-top:4px">${lineaRentabilidad(c, c.rent)}</div></li>`;
+    })
+    .join("")}</ol><p class="peq">En directo del Radar (lectura del ${new Date(R.actualizado).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}). Antes de unirte, lee sus reglas: país del público, página dedicada y si permiten herramientas de IA.</p>`;
+}
 
 function tabNichos() {
   const copiar = (t) => `<button class="btn peq" data-copiar="${esc(t)}" title="Copiar">Copiar</button>`;
@@ -275,17 +285,11 @@ function tabNichos() {
   <h2 style="margin-top:6px">Las 5 cuentas: un nicho de clipping cada una</h2>
   <p>Estos 5 nichos salen de un <b>estudio de las campañas reales</b> de Whop y Vyro leídas con el Radar (15, 16 y 18/10/2026), no de webs del sector. Criterio: que haya <b>campañas en español</b> con presupuesto y que paguen en TikTok. Vyro no tiene ninguna en español: todas son de Whop.</p>
 
-  <h3>Las 5 campañas que más te rentan para empezar (18/10)</h3>
-  <ol style="padding-left:20px">
-    ${MEJORES_CAMPANAS.map(
-      ([c, cu, v, p]) =>
-        `<li style="margin:8px 0"><b>${esc(c)}</b> <span class="chip ${v.startsWith("Renta") ? "verde" : v.startsWith("Dudosa") ? "ambar" : "cian"}">${esc(v)}</span> <span class="chip">Cuenta ${esc(cu)}</span><div class="peq" style="margin-top:4px">${esc(p)}</div></li>`
-    ).join("")}
-  </ol>
-  <p class="peq">Fuera de la lista: «Contenido polémico» (es contenido político: TikTok no permite cobrar por él), ARZ Urus (termina hacia el 26/10 y pide 20.000 vistas por clip), VIRAL LATIN y MEXICAN TRENDS (casi sin presupuesto) y TDJ (la app dice «No renta»). Datos del Radar con la puntuación de la app; Whop estaba caído el 18/10, así que son de su última lectura buena. ${fiab("oficial")} Antes de unirte, mira el Radar: cambian cada semana.</p>
+  <h3>Las campañas que más te rentan ahora mismo</h3>
+  ${mejoresAhora()}
 
   ${nota(
-    "<b>Por dónde empezar:</b> abre primero <b>Dinero</b>, <b>Música</b> y <b>Textos</b>, que cobran desde unas 1.000 vistas por clip. Después <b>Negocios</b> (paga más por cada 1.000 vistas) y <b>Creadores</b> (los clips que más cobran, pero piden 10.000 vistas).<br><b>Regla de oro:</b> una cuenta = un nicho, para que TikTok sepa a quién enseñarla. Cómo crearlas sin problemas, en la pestaña <b>Crear y cuidar las cuentas</b>.",
+    "<b>Por dónde empezar:</b> por las cuentas que tengan campañas buenas hoy en el Radar («Lo mejor para cada cuenta»). Las campañas cambian cada semana: las de español de octubre se han ido apagando y en música hay muchas más en inglés.<br><b>Regla de oro:</b> una cuenta = un nicho, para que TikTok sepa a quién enseñarla. Cómo crearlas sin problemas, en la pestaña <b>Crear y cuidar las cuentas</b>.",
     "cian"
   )}
   <div style="margin:14px 0"><button class="btn prim" id="crear-cuentas">Crear estas 5 cuentas en la app (con usuario, correo, palabras clave y ganchos)</button></div>
@@ -372,7 +376,7 @@ function tabCrear() {
 
   <h2>Varias campañas en una cuenta y cambiar de campaña</h2>
   <ul>
-    <li><b>Una cuenta puede estar en varias campañas del mismo nicho a la vez</b> (por ejemplo, Dinero con Daniel Curto y Matías Matti). Las condiciones de Whop y Vyro no limitan cuántas: lo que prohíben es enviar el mismo clip dos veces. Si una campaña concreta pide exclusividad, lo dirá en sus reglas y mandan esas reglas. ${fiab("oficial")}</li>
+    <li><b>Una cuenta puede estar en varias campañas del mismo nicho a la vez</b> (por ejemplo, Dinero con Daniel Curto y Matías Matti). Las condiciones de Whop y Vyro no limitan cuántas: lo que prohíben es enviar el mismo clip dos veces. Si una campaña concreta pide exclusividad, lo dirá en sus reglas y mandan esas reglas. <b>Ojo con las que exigen página dedicada</b> (como Daniel Curto): esas solo pagan las vistas de una cuenta dedicada a ese creador, con su nombre en el usuario. ${fiab("oficial")}</li>
     <li><b>Cada clip va a una sola campaña</b>, hecho con el material de esa campaña y con su etiqueta de publicidad.</li>
     <li><b>Cuando una campaña se acaba</b>, pasa a otra del mismo tema con otro creador, en la misma cuenta. No afecta al cobro: te paga cada campaña, no TikTok. Deja de publicar clips del creador anterior (sin campaña no tienes permiso) y deja los viejos publicados, salvo que te pidan borrarlos. ${fiab("oficial")}</li>
     <li><b>No cambies de tema</b> en una cuenta: si pasas de dinero a música, tus seguidores dejan de interesarse. ${fiab("sector")}</li>
