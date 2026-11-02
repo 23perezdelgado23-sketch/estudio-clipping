@@ -62,7 +62,7 @@ const PLAN = [
       ["p-dos", "Subir a 2 clips al día en las cuentas que mejor respondan (Números te lo dice) y mantener 1 en las demás.", "estudio"],
       ["p-segunda", "Añadir una segunda campaña del mismo nicho en cada cuenta que pueda con ello (por ejemplo, Matías Matti en Dinero). Cada clip, a una sola campaña.", "oficial"],
       ["p-ganchos", "Probar ganchos y tipos de momento distintos y mirar en Ganchos cuáles dan más vistas.", ""],
-      ["p-presupuesto", "Cambiar las campañas que se acaban por otras del mismo nicho (el piloto del Radar te las propone).", "oficial"],
+      ["p-presupuesto", "Cambiar las campañas que se acaban por otras del mismo nicho (las candidatas están en el Radar: pásale su guía a Claude antes de unirte).", "oficial"],
       ["p-cobro", "Apuntar el primer cobro en Cobros.", ""],
     ],
   },

@@ -772,8 +772,8 @@
         const pintar = async () => {
           const sub = await suscripcionAvisos().catch(() => null);
           $$("avisos-estado").textContent = sub
-            ? "Activados en este dispositivo: te escribiré cuando el piloto termine, pause o te proponga campañas (el servidor mira Whop y Vyro cada 3 horas)."
-            : "Recibe un aviso en este dispositivo cuando el piloto automático termine, pause o te proponga campañas, aunque no tengas la app abierta.";
+            ? "Activados en este dispositivo: te escribiré cuando el piloto termine o pause una de tus campañas (el servidor mira Whop y Vyro cada 3 horas)."
+            : "Recibe un aviso en este dispositivo cuando el piloto automático termine o pause una de tus campañas, aunque no tengas la app abierta.";
           $$("avisos-botones").innerHTML = sub
             ? `<button class="btn" id="avisos-prueba">Enviar aviso de prueba</button><button class="btn" id="avisos-off">Desactivar</button>`
             : `<button class="btn prim" id="avisos-on">Activar avisos</button>`;

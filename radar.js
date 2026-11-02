@@ -746,7 +746,9 @@ function pilotoAutomatico(itemsTodos) {
   const descartadas = radar().descartadas || {};
   const conNicho = D.cuentas.filter((a) => clavesCuenta(a).length);
   const usados = {};
-  const nuevas = (conNicho.length ? itemsTodos : [])
+  // Desde la 4.19 (Eduardo, 02/11/2026) el piloto no añade campañas a «Mis campañas»: allí solo van las que se comprueban
+  // leyendo su guía (muchas piden público de otro país y eso no sale en Whop). Las joyas siguen en el Radar.
+  const nuevas = (conNicho.length && D.ajustes.pilotoPropone === true ? itemsTodos : [])
     .map(evaluar)
     .filter((c) => c.joya && c.cuentaSug && veredicto(c).tipo !== "no" && !descartadas[c.id] && !D.campanas.some((k) => k.radarId === c.id))
     .sort((a, b) => b.puntos - a.puntos)

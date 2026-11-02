@@ -44,7 +44,7 @@ const NICHOS_RECOMENDADOS = [
       ["Lo que paga de verdad", "Restricted (techno) ≈13 $ y LP Giobbi «Keep On» ≈7 $ por clip aprobado. Audien, Bushbaby, ZHU, Melly Mike y Egzod piden público de EE. UU. o Reino Unido: no valen"],
       ["Sin comprobar", "Restricted y LP Giobbi no tienen la guía leída todavía: léela antes de unirte"],
       ["Para cobrar un clip", "≈1.000 vistas en la mayoría"],
-      ["Cómo son", "Campañas de 1–2 meses y 600–5.000 $: hay que ir saltando a las nuevas (el piloto te las propone)"],
+      ["Cómo son", "Campañas de 1–2 meses y 600–5.000 $: hay que ir saltando a las nuevas (las verás en el Radar)"],
     ],
     clips: ["El drop o el estribillo de la canción oficial, en los 2 primeros segundos", "Imágenes que pide cada campaña (fiesta, club, coches, transiciones)", "Siempre con el sonido oficial de TikTok que indica la campaña"],
     ganchos: ["Espera al drop", "La canción de este finde", "Ponla a todo volumen"],
@@ -412,7 +412,7 @@ function tabCrear() {
     <li><b>Cada clip va a una sola campaña</b>, hecho con el material de esa campaña y con su etiqueta de publicidad.</li>
     <li><b>Cuando una campaña se acaba</b>, pasa a otra del mismo tema con otro creador, en la misma cuenta. No afecta al cobro: te paga cada campaña, no TikTok. Deja de publicar clips del creador anterior (sin campaña no tienes permiso) y deja los viejos publicados, salvo que te pidan borrarlos. ${fiab("oficial")}</li>
     <li><b>No cambies de tema</b> en una cuenta: si pasas de dinero a música, tus seguidores dejan de interesarse. ${fiab("sector")}</li>
-    <li>El <b>piloto del Radar</b> retira las campañas que se acaban y te propone las nuevas que encajan con el tema de cada cuenta.</li>
+    <li>El <b>piloto del Radar</b> retira las campañas que se acaban, y el Radar te enseña las nuevas que encajan con cada cuenta. Antes de unirte, lee su guía.</li>
   </ul>
 
   <h2>Manejar 5 cuentas tú solo</h2>

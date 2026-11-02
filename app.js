@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.18.2";
+const VERSION_APP = "4.19";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -242,7 +242,7 @@ const SECCIONES = [
   ["panel", "", "Inicio", "Cómo vas hoy y qué toca hacer"],
   ["empieza", "", "Primeros pasos", "Tu plan con 5 cuentas, que no te baneen y rutina diaria"],
   ["radar", "Campañas", "Radar", "Las campañas reales de Whop y Vyro, puntuadas para tus cuentas"],
-  ["campanas", "Campañas", "Mis campañas", "Propuestas y campañas a las que te has unido"],
+  ["campanas", "Campañas", "Mis campañas", "Solo las comprobadas contigo y las que trabajas"],
   ["clips", "Producción", "Clips", "Del corte al cobro"],
   ["mesa", "Producción", "Mesa de corte", "Marca los mejores momentos o deja que la IA los encuentre"],
   ["calendario", "Producción", "Calendario", "Qué publica cada cuenta cada día"],
@@ -545,19 +545,21 @@ function vistaCampanas() {
   acciones([["nueva-camp", "+ Nueva campaña", "prim"]]);
   $("#nueva-camp").onclick = () => editarCampana();
   const orden = { activa: 0, pausada: 1, terminada: 2 };
-  // Las propuestas (piloto automático o IA) van aparte: no te has unido a ellas
+  // Por unirte: solo las que has comprobado (desde la 4.19 el piloto ya no añade campañas solo; las candidatas están en el Radar)
   const propuestas = D.campanas.filter((c) => c.estado === "porunirte");
   const lista = D.campanas.filter((c) => c.estado !== "porunirte").sort((a, b) => (orden[a.estado] ?? 3) - (orden[b.estado] ?? 3));
   const bloquePropuestas = propuestas.length
-    ? `<h2 style="margin-top:0">Propuestas: aún no te has unido (${propuestas.length})</h2>
-      <p class="peq" style="margin-top:0">Las ha propuesto el piloto automático o la IA con los datos del Radar. Mira su informe y, si te convence, únete en su plataforma y pulsa «Ya me he unido». Si no, descártala y no volverá a aparecer.</p>
+    ? `<h2 style="margin-top:0">Comprobadas, por unirte (${propuestas.length})</h2>
+      <p class="peq" style="margin-top:0">Solo están las campañas cuya guía hemos leído y valen desde España. <b>Confirmada</b>: puedes unirte ya. <b>Pendiente</b>: falta lo que pone, normalmente preguntar algo en su chat. Las candidatas nuevas las tienes en el <b>Radar</b>.</p>
       ${propuestas
         .map((c) => {
           const r = c.radarId && D.radar?.items?.find((x) => x.id === c.radarId);
           const v = r ? veredicto(r) : null;
           return `<div class="tarjeta" style="margin-bottom:10px;border-style:dashed"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <div style="flex:1;min-width:220px"><b>${esc(c.nombre)}</b> <span class="chip cian">Propuesta</span>${v ? ` <span class="chip ${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>` : ""}
+            <div style="flex:1;min-width:220px"><b>${esc(c.nombre)}</b> ${c.pendiente ? `<span class="chip ambar">Pendiente</span>` : `<span class="chip verde">Confirmada</span>`}${v ? ` <span class="chip ${COLOR_VEREDICTO[v.tipo]}">${v.etiqueta}</span>` : ""}
+            ${c.pendiente ? `<div class="peq" style="color:var(--ambar);margin:4px 0">Falta: ${esc(c.pendiente)}</div>` : ""}
             <div class="peq">${esc(c.plataforma || "")} · ${fmtMon(c.cpm, c.moneda)} por 1.000 vistas${c.minVistas ? ` · cobra desde ${fmtNum(c.minVistas)} vistas` : ""}${c.cuentaSugerida && cuenta(c.cuentaSugerida) ? ` · para ${esc(cuenta(c.cuentaSugerida).usuario)}` : ""}</div></div>
+            <button class="btn peq" data-ficha="${c.id}">Reglas</button>
             ${r ? `<button class="btn peq" data-informe="${c.radarId}">Informe</button>` : ""}
             ${c.enlace ? `<a class="btn peq" href="${esc(c.enlace)}" target="_blank">Abrir ↗</a>` : ""}
             <button class="btn peq prim" data-unido="${c.id}">Ya me he unido</button>
@@ -584,6 +586,7 @@ function vistaCampanas() {
         .join("")}</tbody></table>
       <p class="peq">El presupuesto gastado lo ves en la página de la campaña (Whop, Vyro…). Actualízalo de vez en cuando: cuando se agota, los clips dejan de cobrar.</p>`
     : `<div class="vacio">Aún no te has unido a ninguna campaña. Cuando te unas a una en Whop o Vyro, pulsa «Ya me he unido» en su propuesta o apúntala con «+ Nueva campaña». Las mejores las tienes en el <b>Radar</b>.<br><br><button class="btn prim" id="vacio-camp">+ Nueva campaña</button></div>`);
+  $("#contenido").querySelectorAll("[data-ficha]").forEach((b) => (b.onclick = () => editarCampana(campana(b.dataset.ficha))));
   $("#contenido").querySelectorAll("[data-unido]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -601,7 +604,7 @@ function vistaCampanas() {
         if (c.radarId) (radar().descartadas ||= {})[c.radarId] = hoyISO();
         D.campanas = D.campanas.filter((x) => x.id !== c.id);
         guardar();
-        aviso("Descartada: el piloto no volverá a proponerla");
+        aviso("Descartada: ya no está en Mis campañas");
         vistaCampanas();
       })
   );
@@ -630,6 +633,7 @@ function editarCampana(c) {
       <label>Estado<select name="estado">${opciones([["porunirte", "Por unirte"], ["activa", "Activa"], ["pausada", "Pausada"], ["terminada", "Terminada"]], c.estado)}</select></label>
       <label>Cuenta con la que la trabajas<select name="cuentaSugerida">${opciones(D.cuentas.map((a) => [a.id, a.usuario]), c.cuentaSugerida, "Sin asignar")}</select></label>
       <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="paginaDedicada" ${c.paginaDedicada ? "checked" : ""}/> Exige página dedicada (una cuenta solo para esta campaña)</label>
+      <label class="ancho">Pendiente de confirmar<input name="pendiente" value="${esc(c.pendiente)}" placeholder="Vacío = confirmada. Ej.: preguntar en el chat si exige página dedicada" /></label>
       <label>Enlace a la campaña<input name="enlace" value="${esc(c.enlace)}" placeholder="https://" /></label>
       <label>Material (carpeta de vídeos)<input name="material" value="${esc(c.material)}" placeholder="Enlace al Drive o carpeta del creador" /></label>
       <label class="ancho">Etiqueta de publicidad que exige<input name="divulgacion" value="${esc(c.divulgacion)}" placeholder="Ej.: #Sponsored o #MarcaAd al principio de la descripción" /></label>
@@ -1357,7 +1361,7 @@ function bienvenida(forzar = false) {
   const conCuenta = !!window.nube?.correo?.();
   const pasos = [
     ["joya", "Bienvenido a Estudio Clipping", `Tu centro de mando para ganar dinero haciendo <b>clipping con permiso</b> en TikTok (campañas de Whop y Vyro). En 5 pantallas te enseño lo que hace por ti.`],
-    ["radar", "Encuentra las campañas que rentan", `El <b>Radar</b> lee todas las campañas de Whop y Vyro cada 3 horas (aunque tengas el ordenador apagado) y te dice cuáles <b>rentan de verdad</b>, con sus datos reales. El <b>piloto automático</b> retira las que se acaban y te propone las mejores para tus cuentas, con un aviso al móvil.`],
+    ["radar", "Encuentra las campañas que rentan", `El <b>Radar</b> lee todas las campañas de Whop y Vyro cada 3 horas (aunque tengas el ordenador apagado) y te dice cuáles <b>rentan de verdad</b>, con sus datos reales. En «Lo mejor para cada cuenta» tienes las mejores, y el <b>piloto automático</b> te avisa al móvil cuando una de tus campañas se acaba o se para.`],
     ["mesa", "Clips verticales en minutos", `En la <b>Mesa de corte</b> del Mac abres el vídeo largo y pulsas <b>🚀 Hacerlo todo</b>: lo transcribe, la IA elige los mejores momentos y salen cortados en vertical, siguiendo a quien habla, con subtítulos, título y el texto para TikTok. Antes de subirlos, el <b>revisor</b> comprueba las reglas de la campaña.${mac ? "" : " (La fábrica funciona en la app del Mac; aquí puedes ver y organizar todo.)"}`],
     ["calendario", "Publica cada día sin olvidos", `Programa cada clip en el <b>Calendario</b> y te avisaré al móvil cuando toque subirlo. Apunta las vistas en <b>Números</b> y cada lunes te llegará un <b>informe</b> con lo que funciona y qué hacer esa semana.`],
     ["cuentas", "Primeros pasos", `<ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">
@@ -2014,7 +2018,7 @@ const VISTAS = {
 // (por su id del Radar) las reglas leídas de su guía; después borra el archivo. Si la campaña aún no está en tus campañas, se crea «por unirte».
 async function importarPerfilesPrivados() {
   const p = await window.estudio.perfilesPendientes?.().catch(() => null);
-  if (!p?.cuentas && !p?.campanas) return;
+  if (!p?.cuentas && !p?.campanas && !p?.limpiarCampanas) return;
   let n = 0, k = 0;
   D.cuentas.forEach((c) => {
     const perfil = p.cuentas?.[c.nicho];
@@ -2022,6 +2026,13 @@ async function importarPerfilesPrivados() {
     Object.assign(c, perfil);
     n++;
   });
+  // Dejar en Mis campañas solo las comprobadas: fuera las demás que no tengan clips (las candidatas siguen en el Radar)
+  if (p.limpiarCampanas) {
+    const mantener = new Set(p.limpiarCampanas.mantener || []);
+    const antes = D.campanas.length;
+    D.campanas = D.campanas.filter((x) => mantener.has(x.radarId) || D.clips.some((c) => c.campanaId === x.id));
+    k += antes - D.campanas.length;
+  }
   Object.entries(p.campanas || {}).forEach(([radarId, datos]) => {
     // Campañas cuya guía dice que no valen desde España: fuera de tus campañas (si no tienen clips) y descartadas en el Radar
     if (datos.descartar) {
