@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.18.1";
+const VERSION_APP = "4.18.2";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -2023,6 +2023,13 @@ async function importarPerfilesPrivados() {
     n++;
   });
   Object.entries(p.campanas || {}).forEach(([radarId, datos]) => {
+    // Campañas cuya guía dice que no valen desde España: fuera de tus campañas (si no tienen clips) y descartadas en el Radar
+    if (datos.descartar) {
+      D.campanas = D.campanas.filter((x) => x.radarId !== radarId || D.clips.some((c) => c.campanaId === x.id));
+      (radar().descartadas ||= {})[radarId] = hoyISO();
+      k++;
+      return;
+    }
     let camp = D.campanas.find((x) => x.radarId === radarId);
     if (!camp) {
       const c = (D.radar?.items || []).find((x) => x.id === radarId);
