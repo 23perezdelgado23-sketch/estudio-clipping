@@ -53,8 +53,8 @@ const CLAVES_DEBILES = new Set(["trend", "tendencia", "meme", "viral", "sound", 
 const escRx = (k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Cuánto encaja la campaña con el nicho de la cuenta: cada palabra clave que aparece al principio de una palabra suma 1
 // (las generales, 0,5). «reto» ya no encaja con «secreto», ni «ceo» con otra palabra. Por debajo de 1 no encaja (0).
-// Palabras cortas que solo cuentan enteras (o en plural): «pop» no es «popular» ni «rock» es «rocket»
-const CLAVES_ENTERAS = new Set(["pop", "rock", "band", "club", "dj", "mv", "edm", "f1", "nba", "mma", "ufc", "gta", "soul", "house", "funk", "drop", "game", "cine", "film", "kick"]);
+// Palabras que solo cuentan enteras (o en plural): «pop» no es «popular», «rock» no es «rocket» ni «techno» es «technology»
+const CLAVES_ENTERAS = new Set(["techno", "electronic", "rave", "pop", "rock", "band", "club", "dj", "mv", "edm", "f1", "nba", "mma", "ufc", "gta", "soul", "house", "funk", "drop", "game", "cine", "film", "kick"]);
 function encaje(c, a) {
   const t = textoCampana(c);
   const p = clavesCuenta(a).reduce((s, k) => s + (new RegExp(`(^|[^a-z0-9áéíóúüñ])${escRx(k)}${CLAVES_ENTERAS.has(k) ? "s?(?![a-z0-9áéíóúüñ])" : ""}`, "i").test(t) ? (CLAVES_DEBILES.has(k) ? 0.5 : 1) : 0), 0);
@@ -115,9 +115,16 @@ function vistasCuenta(a) {
   return v.length >= 5 ? v[Math.floor(v.length / 2)] : null;
 }
 
+// Agencias cuyas guías piden que la mayoría del público sea «Tier 1» (EE. UU., Reino Unido, Canadá y Australia), vídeo y texto en inglés,
+// y capturas de los países del público para aprobar el clip. Comprobado en sus guías el 02/11/2026 (Artist Influence: ZHU, Melly Mike
+// y Egzod; The Clip Ship: Kameron Marlowe y Zach Top). Su resumen en Whop no lo dice: por eso se marcan por agencia.
+const AGENCIAS_TIER1 = /^(artist influence|the clip ship)$/i;
+const TIER1 = "EE. UU. o Reino Unido (Tier 1)"; // corto: sale en un chip en el iPhone
+
 // País del público que pide la campaña según su nombre o descripción («for Mexican audiences»), si no es el tuyo
 function publicoPais(c) {
   const t = `${c.nombre} ${c.desc || ""}`;
+  if (AGENCIAS_TIER1.test((c.org || "").trim()) || /\btier[ -]?1\b/i.test(t)) return TIER1;
   const hit = PUBLICO_PAIS.find(([rx]) => rx.test(t));
   return hit && hit[1] !== PAIS_PROPIO ? hit[1] : "";
 }
@@ -718,9 +725,10 @@ function pilotoAutomatico(itemsTodos) {
   const puntosDe = (k) => (porId[k.radarId] ? evaluar(porId[k.radarId]).puntos : -1);
   const quitar = new Set();
   // Las que el piloto asignó a una cuenta con la que ya no encajan (antes bastaba una palabra general como «trend»)
+  // y las que piden público de otro país (desde la 4.18.1 se sabe que las agencias de música piden EE. UU. y Reino Unido)
   pendientes.forEach((k) => {
     const c = porId[k.radarId], a = D.cuentas.find((x) => x.id === k.cuentaSugerida);
-    if (c && a && !encaje(c, a) && !D.clips.some((x) => x.campanaId === k.id)) quitar.add(k.id);
+    if (c && ((a && !encaje(c, a)) || publicoPais(c)) && !D.clips.some((x) => x.campanaId === k.id)) quitar.add(k.id);
   });
   [...new Set(pendientes.map((k) => k.cuentaSugerida || ""))].forEach((cta) => {
     pendientes
@@ -731,7 +739,7 @@ function pilotoAutomatico(itemsTodos) {
   });
   if (quitar.size) {
     D.campanas = D.campanas.filter((k) => !quitar.has(k.id));
-    cambios.push(`Quitadas ${quitar.size} propuestas que sobraban: como mucho quedan ${MAX_PROPUESTAS} por cuenta, las mejores`);
+    cambios.push(`Quitadas ${quitar.size} propuestas: ya no encajaban, piden público de otro país o sobraban (como mucho quedan ${MAX_PROPUESTAS} por cuenta, las mejores)`);
   }
   const huecos = (a) => MAX_PROPUESTAS - D.campanas.filter((k) => k.estado === "porunirte" && k.cuentaSugerida === a.id).length;
   // Joyas nuevas, las mejores primero, solo para las cuentas que tienen hueco. Sin cuentas con nicho no se propone nada (no sabe qué te encaja).

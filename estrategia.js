@@ -38,11 +38,11 @@ const NICHOS_RECOMENDADOS = [
     idiomas: "es,en",
     color: "ambar",
     porque:
-      "Es el nicho con más campañas que rentan: la música paga unos 12 $ por clip aprobado de mediana, y no hace falta entender el idioma para engancharse a una canción. La electrónica encaja con el público de España (club, festival, Ibiza) y con lo que tú conoces de la noche.",
+      "La música se entiende sin idioma y la electrónica encaja con el público de España (club, festival, Ibiza) y con lo que tú conoces de la noche. Pero ojo: la mayoría de campañas de música en inglés piden público de EE. UU. o Reino Unido. Quedan pocas que valgan desde España y hay que leer la guía de cada una antes de unirte.",
     datos: [
-      ["Campañas de música (02/11)", "95 encajan con esta cuenta, 57 de ellas joyas; casi todas en inglés"],
-      ["Lo que paga de verdad", "Audien «7 Miles High» ≈39 $, ZHU «Call Me Baby» ≈18 $, Bushbaby «Back To Funk» ≈17 $ y Restricted (techno) ≈13 $ por clip aprobado"],
-      ["Competencia", "Entre 7 y 17 clippers en las mejores"],
+      ["Campañas de música (02/11)", "75 encajan con esta cuenta, pero solo 18 joyas al quitar las que piden público de EE. UU., Reino Unido, Canadá y Australia"],
+      ["Lo que paga de verdad", "Restricted (techno) ≈13 $ y LP Giobbi «Keep On» ≈7 $ por clip aprobado. Audien, Bushbaby, ZHU, Melly Mike y Egzod piden público de EE. UU. o Reino Unido: no valen"],
+      ["Sin comprobar", "Restricted y LP Giobbi no tienen la guía leída todavía: léela antes de unirte"],
       ["Para cobrar un clip", "≈1.000 vistas en la mayoría"],
       ["Cómo son", "Campañas de 1–2 meses y 600–5.000 $: hay que ir saltando a las nuevas (el piloto te las propone)"],
     ],
@@ -81,9 +81,9 @@ const NICHOS_RECOMENDADOS = [
     porque:
       "La segunda cuenta de música, con otro estilo para no competir con la de electrónica: canciones pop, indie, rock y country, videoclips y tráileres de cine. Así cada cuenta tiene su público y no repites canciones entre tus cuentas.",
     datos: [
-      ["Campañas (02/11)", "25 encajan con esta cuenta, 12 de ellas joyas; casi todas en inglés"],
-      ["Lo que paga de verdad", "Film Reality (app de cine) ≈20 $, Ryan Gosling's Band ≈9 $ y A24 «Slayground» ≈7 $ por clip aprobado"],
-      ["Además", "Las canciones generales (Leon Bridges, Ella Langley, Zach Top) valen para las dos cuentas de música: elige en el Radar a cuál va cada una"],
+      ["Campañas (02/11)", "25 encajan con esta cuenta, 7 de ellas joyas; en inglés"],
+      ["Lo que paga de verdad", "Film Reality (app de cine) ≈20 $, A24 «Slayground» ≈7 $ y DeathByRomy ≈7 $ por clip aprobado"],
+      ["Ojo", "Film Reality pide el enlace a la App Store en la biografía. Ryan Gosling, Leon Bridges, Ella Langley y Zach Top piden público de EE. UU. o Reino Unido: no valen"],
       ["Para cobrar un clip", "≈1.000–2.000 vistas"],
     ],
     clips: ["El estribillo de la canción oficial sobre el videoclip o las escenas que da la campaña", "Un tráiler cortado en su momento más fuerte", "Un texto corto arriba que cuente qué pasa"],
@@ -308,13 +308,14 @@ function tabNichos() {
   <h2 style="margin-top:6px">Las 5 cuentas: un nicho de clipping cada una</h2>
   <p>Estos 5 nichos salen de leer <b>las 444 campañas de Whop y Vyro</b> (02/11/2026) y medir lo que pagan de verdad (dinero gastado ÷ clips aprobados), no de webs del sector. Criterio: <b>los que más rentan y funcionan con público de España</b>: que paguen en TikTok, no pidan público de otro país, no sean de apuestas y se entiendan sin idioma (música, deporte, videojuegos) o estén en español.</p>
   <table style="margin:8px 0 12px"><thead><tr><th>Nicho</th><th class="num">Campañas que rentan y no piden público de otro país</th><th class="num">Lo que paga un clip aprobado (mediana)</th></tr></thead><tbody>
-    <tr><td>Entretenimiento (videojuegos, cine, marcas y streamers en inglés)</td><td class="num">26</td><td class="num">≈13 $</td></tr>
-    <tr><td>Música</td><td class="num">19</td><td class="num">≈12 $</td></tr>
+    <tr><td>Entretenimiento (videojuegos, cine, marcas y streamers en inglés)</td><td class="num">23</td><td class="num">≈11 $</td></tr>
+    <tr><td>Música</td><td class="num">6</td><td class="num">≈7 $</td></tr>
     <tr><td>Videojuegos (aparte de los anteriores)</td><td class="num">6</td><td class="num">≈6 $</td></tr>
     <tr><td>Deporte</td><td class="num">3</td><td class="num">≈6 $ (FotMob Spain, ≈54 $)</td></tr>
     <tr><td>En español (todas)</td><td class="num">4</td><td class="num">Muy desigual: de 2,50 $ a 54 $</td></tr>
   </tbody></table>
-  <p class="peq">Lectura del 02/11/2026. Finanzas en inglés paga bien, unos 20 $ por clip, pero no encaja con una cuenta en español; política, apuestas y las que piden público de EE. UU., México o Canadá se descartan.</p>
+  <p class="peq">Lectura del 02/11/2026. Finanzas en inglés paga bien, unos 20 $ por clip, pero no encaja con una cuenta en español; política, apuestas y las que piden público de otro país se descartan.</p>
+  ${nota("<b>Ojo con la música en inglés:</b> las guías de las dos agencias que más campañas de música tienen (<b>Artist Influence</b> y <b>The Clip Ship</b>) piden que la mayoría del público sea de <b>EE. UU., Reino Unido, Canadá y Australia</b>, vídeo en inglés y capturas de los países de tu público para aprobar cada clip. Su resumen en Whop no lo dice. Con una cuenta desde España te rechazarían el clip, así que el Radar ya las aparta (49 campañas). <b>Antes de unirte a cualquiera, lee su guía:</b> lo que no sale en Whop puede estar ahí.", "")}
 
   <h3>Las campañas que más te rentan ahora mismo</h3>
   ${mejoresAhora()}

@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.18";
+const VERSION_APP = "4.18.1";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -2010,21 +2010,33 @@ const VISTAS = {
   }
 })();
 
-// Solo en el Mac: mete en cada cuenta (por su nicho) el perfil que se haya dejado en importar-perfiles.json y borra el archivo
+// Solo en el Mac: mete en cada cuenta (por su nicho) el perfil que se haya dejado en importar-perfiles.json, y en cada campaña
+// (por su id del Radar) las reglas leídas de su guía; después borra el archivo. Si la campaña aún no está en tus campañas, se crea «por unirte».
 async function importarPerfilesPrivados() {
   const p = await window.estudio.perfilesPendientes?.().catch(() => null);
-  if (!p?.cuentas) return;
-  let n = 0;
+  if (!p?.cuentas && !p?.campanas) return;
+  let n = 0, k = 0;
   D.cuentas.forEach((c) => {
-    const perfil = p.cuentas[c.nicho];
+    const perfil = p.cuentas?.[c.nicho];
     if (!perfil) return;
     Object.assign(c, perfil);
     n++;
   });
-  if (!n) return;
+  Object.entries(p.campanas || {}).forEach(([radarId, datos]) => {
+    let camp = D.campanas.find((x) => x.radarId === radarId);
+    if (!camp) {
+      const c = (D.radar?.items || []).find((x) => x.id === radarId);
+      if (!c && !datos.nombre) return;
+      camp = c ? { id: uid(), radarId, nombre: c.nombre, plataforma: c.plat, enlace: c.enlace, redes: (c.redes || []).join(", "), estado: "porunirte", notas: "" } : { id: uid(), radarId, estado: "porunirte", notas: "" };
+      D.campanas.push(camp);
+    }
+    Object.assign(camp, datos);
+    k++;
+  });
+  if (!n && !k) return;
   guardar();
   await window.estudio.perfilesHecho();
-  aviso(`Perfiles de ${n} cuenta(s) guardados en tus datos privados`);
+  aviso([n && `Perfiles de ${n} cuenta(s)`, k && `reglas de ${k} campaña(s)`].filter(Boolean).join(" y ") + " guardados en tus datos privados");
   ir(seccion);
 }
 
