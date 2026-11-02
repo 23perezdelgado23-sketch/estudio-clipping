@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.17";
+const VERSION_APP = "4.18";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -1460,7 +1460,7 @@ function editarCuenta(a) {
     <div class="form">
       <label>Usuario<input name="usuario" value="${esc(a.usuario)}" placeholder="@micuenta" /></label>
       <label>Red<select name="red">${opciones([["TikTok", "TikTok"], ["Instagram Reels", "Instagram Reels"], ["YouTube Shorts", "YouTube Shorts"], ["X", "X"]], a.red)}</select></label>
-      <label>Nicho<input name="nicho" value="${esc(a.nicho)}" placeholder="Negocios, dinero, creadores, tendencias…" /></label>
+      <label>Nicho<input name="nicho" value="${esc(a.nicho)}" placeholder="Dinero, música electrónica, fútbol, gaming…" /></label>
       <label>Seguidores<input name="seguidores" type="number" min="0" value="${esc(a.seguidores)}" /></label>
       <label>Clips al día (objetivo)<input name="objetivoDia" type="number" min="0" value="${esc(a.objetivoDia)}" placeholder="Para el Calendario" /></label>
       <label>Horas de publicación<input name="horas" value="${esc(a.horas)}" placeholder="13:00, 19:30, 21:30" /></label>
@@ -1841,7 +1841,7 @@ function vistaGuia() {
 
   <h2 id="g5">Cuentas</h2>
   <ul>
-    <li><b>Tu plan:</b> tú solo, con 5 cuentas de un nicho cada una (Estrategia → Las 5 cuentas), cada una con su Gmail. Empiezas publicando en Dinero, Música y Textos, y sumas Negocios y Creadores en la segunda semana.</li>
+    <li><b>Tu plan:</b> tú solo, con 5 cuentas de un nicho cada una (Estrategia → Las 5 cuentas), cada una con su Gmail. Empiezas publicando en Dinero y Música electrónica, y sumas Fútbol, Pop y cine y Gaming en los días siguientes.</li>
     <li>Una cuenta por nicho: TikTok entiende mejor a quién enseñar tus clips. Una cuenta puede estar en varias campañas del mismo nicho a la vez (salvo las que exigen página dedicada a un creador), y cuando una se acaba pasas a otra del mismo tema.</li>
     <li>Cuenta nueva = estado <b>«Calentando»</b>: úsala con normalidad unos días antes de publicar en serie.</li>
     <li>No compres seguidores ni vistas, ni interactúes entre tus propias cuentas. Las campañas tienen revisiones antibots y te pueden retener o anular el pago.</li>

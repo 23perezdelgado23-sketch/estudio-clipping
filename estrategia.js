@@ -4,24 +4,26 @@
 // «oficial» = condiciones o ayuda de la propia plataforma; «estudio» = estudio con datos;
 // «sector» = webs de empresas del sector (orientativo); «sin confirmar» = no se pudo verificar.
 
-// Las 5 cuentas salen del estudio de las campañas reales de Whop y Vyro en español (Radar, 15–16/10/2026; datos actualizados el 18/10).
-// La 5.ª (Textos) se añadió el 18/10/2026 cuando Eduardo decidió empezar solo con 5 cuentas.
-// «Vistas por clip aprobado» = vistas totales de la campaña ÷ clips aprobados (media; los clips que explotan la suben).
+// Las 5 cuentas (4.18, 02/11/2026): salen de leer las 444 campañas de Whop y Vyro y medir lo que pagan de verdad
+// (dinero gastado ÷ clips aprobados), quitando las que piden público de otro país, no pagan en TikTok o son de apuestas.
+// Criterio de Eduardo: los nichos que más rentan y que funcionan con público de España.
+// Hasta la 4.17 eran Dinero, Música, Textos, Negocios y Creadores (estudio del 15–18/10, campañas en español que se apagaron).
+// Los datos de cada nicho son del Radar del 02/11/2026; las campañas cambian cada semana: lo vigente está en el Radar.
 const NICHOS_RECOMENDADOS = [
   {
     id: "dinero",
     nombre: "Dinero, trading e inversión",
     foto: "Una gráfica que sube, en blanco sobre verde. Diseño propio: sin caras ni logos de nadie.",
-    claves: "trading, trader, invers, dinero, finanzas, mentalidad, bolsa",
+    claves: "trading, trader, invers, dinero, finanzas, mentalidad, bolsa, podcast, pódcast, ceo, emprend, negocio, network marketing",
+    idiomas: "es",
     color: "cian",
     porque:
-      "Es la cuenta para cobrar antes: Daniel Curto paga desde 1.000 vistas por clip, lo más bajo en español, y es la única campaña en español que la app marca «Renta» y dura meses (hasta febrero de 2027).",
+      "Es la cuenta en español: la que mejor entiende tu público de España. Las campañas en español son pocas y pagan menos por clip que las de música, pero Daniel Curto vuelve a ir a más y cobra desde 1.000 vistas. Desde la 4.18 recoge también las de negocios y pódcast en español.",
     datos: [
-      ["Campañas en español (18/10)", "Daniel Curto (trading, inversión, mentalidad) y Matías Matti (nueva)"],
-      ["Tarifa en TikTok", "1,00 $ y 0,60 $ por 1.000 vistas"],
-      ["Clippers trabajando", "51 y 2"],
-      ["Vistas por clip aprobado", "3.313 de media en Daniel Curto: un clip medio cobra unos 3,30 $"],
-      ["Para cobrar un clip", "≈1.000 y 3.000 vistas"],
+      ["Campañas en español (02/11)", "Daniel Curto («Renta: va a más») y Matías Matti («No renta: saturada»)"],
+      ["Lo que paga de verdad", "Daniel Curto: unos 2,50 $ por clip aprobado de media, con 53 clippers"],
+      ["Para cobrar un clip", "≈1.000 vistas"],
+      ["Ojo", "Daniel Curto exige página dedicada solo a él: esta cuenta, tal como está, no vale para esa campaña"],
     ],
     clips: ["Una frase sobre dinero o mentalidad que se entiende sola", "Una explicación corta de un concepto (qué es el interés compuesto, por ejemplo)", "Su historia: de dónde empezó y cómo le fue", "Un error típico que señala él"],
     ganchos: ["Esto es lo que nadie te explica del dinero", "Así empezó", "El error que comete casi todo el mundo"],
@@ -29,84 +31,85 @@ const NICHOS_RECOMENDADOS = [
     ojo: "No des tú consejos de inversión ni prometas ganancias en la descripción ni en la biografía: corta lo que dice el creador y nada más.",
   },
   {
-    id: "tendencias",
-    nombre: "Música y tendencias en español (sin cara)",
+    id: "electronica",
+    nombre: "Música electrónica y nightlife (sin cara)",
     foto: "Unos auriculares con una onda de sonido, en blanco sobre morado. Diseño propio: nada de portadas de discos ni fotos de artistas.",
-    claves: "song, canción, cancion, música, musica, music, sound, trend, tendencia, viral latin, mexican, latin",
+    claves: "edm, house, techno, dance, dj, electronic, electrónica, nightlife, club, rave, festival, trance, ibiza, remix, drop, funk, song, music",
+    idiomas: "es,en",
     color: "ambar",
     porque:
-      "Duetti saca campañas nuevas en español casi cada semana, pagan desde 1.000 vistas y sus clips aprobados tienen muchas vistas. No hay que cortar a ningún creador: son vídeos con la canción oficial que pide cada campaña.",
+      "Es el nicho con más campañas que rentan: la música paga unos 12 $ por clip aprobado de mediana, y no hace falta entender el idioma para engancharse a una canción. La electrónica encaja con el público de España (club, festival, Ibiza) y con lo que tú conoces de la noche.",
     datos: [
-      ["Campañas en español (18/10)", "MY SONG SPANISH TREND (la app dice «Renta»), VIRAL LATIN/SPANISH VIDEOS y MEXICAN TIKTOK TRENDS, todas de Duetti"],
-      ["Tarifa en TikTok", "1,25 $ por 1.000 vistas (máximo 100 $ por clip)"],
-      ["Para cobrar un clip", "≈1.000 vistas"],
-      ["Vistas por clip aprobado", "13.510 en MY SONG SPANISH TREND: un clip medio cobra unos 16,90 $"],
-      ["Cómo son", "Campañas cortas (unas 2 semanas) de 1.000 $: VIRAL LATIN y MEXICAN casi no tienen presupuesto. Hay que ir saltando a las nuevas"],
+      ["Campañas de música (02/11)", "95 encajan con esta cuenta, 57 de ellas joyas; casi todas en inglés"],
+      ["Lo que paga de verdad", "Audien «7 Miles High» ≈39 $, ZHU «Call Me Baby» ≈18 $, Bushbaby «Back To Funk» ≈17 $ y Restricted (techno) ≈13 $ por clip aprobado"],
+      ["Competencia", "Entre 7 y 17 clippers en las mejores"],
+      ["Para cobrar un clip", "≈1.000 vistas en la mayoría"],
+      ["Cómo son", "Campañas de 1–2 meses y 600–5.000 $: hay que ir saltando a las nuevas (el piloto te las propone)"],
     ],
-    clips: ["El formato que pide la campaña (baile, momento viral, «POV») con la canción oficial", "La canción oficial de la campaña, siempre", "Temas cercanos al público de cada campaña (muchas apuntan a México)"],
-    ganchos: ["Tag a quien necesita ver esto", "Si te pasó, ya sabes", "POV:"],
-    herramientas: "CapCut con plantillas de texto; usa siempre el sonido oficial de TikTok que indica la campaña.",
-    ojo: "Muchas están pensadas para público de México: lee en cada una si exige público de un país antes de unirte. Usa vídeos de fondo propios o de bancos libres, nunca de otros creadores.",
+    clips: ["El drop o el estribillo de la canción oficial, en los 2 primeros segundos", "Imágenes que pide cada campaña (fiesta, club, coches, transiciones)", "Siempre con el sonido oficial de TikTok que indica la campaña"],
+    ganchos: ["Espera al drop", "La canción de este finde", "Ponla a todo volumen"],
+    herramientas: "Un clip = un momento de la canción oficial (el drop) con imágenes que encajen: fiesta, club, coches, F1, escenas. Hook en 2 segundos. Sin cara.",
+    ojo: "Usa solo el material que da cada campaña (su Drive) o fondos tuyos o de bancos con licencia. Si una campaña pide escenas de series, F1 o pelis y no te las da, no las cojas de internet: no tienes derecho a usarlas.",
   },
   {
-    id: "textos",
-    nombre: "Textos en español: frases y situaciones (sin cara)",
-    foto: "Un bocadillo de texto, en blanco sobre amarillo. Diseño propio, sin caras.",
-    claves: "text tiktok, tribute text, heartfelt, text joke, bold text, school life, school, citatorio, reporte, texto, frase",
-    color: "",
-    porque:
-      "Es la cuenta nueva: Duetti ha abierto dos campañas en español de vídeos de texto que nadie ha empezado (0 clippers y 1.000 $ enteros cada una). Pagan desde 1.000 vistas y se hacen sin cara: una frase sobre un fondo, con la canción de la campaña. Una pide un texto emotivo (echar de menos a alguien) y la otra, humor de la vida en el colegio.",
-    datos: [
-      ["Campañas en español (18/10)", "SPANISH TEXT TIKTOK y SPANISH SCHOOL LIFE TIKTOK (Duetti, nuevas)"],
-      ["Tarifa en TikTok", "1,25 $ por 1.000 vistas (máximo 100 $ por clip)"],
-      ["Clippers trabajando", "Ninguno todavía"],
-      ["Para cobrar un clip", "≈1.000 vistas"],
-      ["Por qué aparte de Música", "Son formatos distintos (texto frente a música y bailes): así cada cuenta tiene un público claro y no se repite contenido"],
-    ],
-    clips: ["Un texto emotivo y corto sobre echar de menos a alguien, sobre un cielo, velas o luces de ciudad (lo que pide SPANISH TEXT TIKTOK)", "Un chiste escrito sobre la vida en el colegio: citatorios, reportes, el timbre (lo que pide SPANISH SCHOOL LIFE)", "Siempre con el sonido oficial que indica cada campaña"],
-    ganchos: ["Para quien hoy echa de menos a alguien", "Dime que no te ha pasado", "POV: te mandan citatorio"],
-    herramientas: "CapCut: texto grande y legible sobre un vídeo de fondo grabado por ti o de un banco gratuito con licencia (Pexels, Pixabay), con el sonido oficial de la campaña.",
-    ojo: "Las campañas dicen «usa clips que encuentres en internet»: no lo hagas. TikTok solo deja publicar lo que has creado o tienes derecho a compartir, así que usa fondos tuyos o de bancos gratuitos con licencia, y nada de menores reconocibles. Son campañas pensadas para público de México: léelo en cada una.",
-  },
-  {
-    id: "negocios",
-    nombre: "Negocios y emprendimiento (pódcast y eventos)",
-    foto: "Un micrófono de pódcast, en blanco sobre azul. Diseño propio: nunca la cara de Víctor Rodríguez ni de otros.",
-    claves: "podcast, pódcast, ceo, emprend, negocio, business, network marketing, coaching",
+    id: "futbol",
+    nombre: "Fútbol y deporte (en español)",
+    foto: "Un balón de fútbol, en blanco sobre verde césped. Diseño propio: sin escudos ni jugadores.",
+    claves: "football, fútbol, futbol, soccer, laliga, champions, fotmob, sports, deporte, f1, nba, ufc, boxing",
+    idiomas: "es,en",
     color: "verde",
     porque:
-      "Es el nicho en español que mejor paga por cada 1.000 vistas y con menos competencia: 7 y 6 clippers. A cambio, cada clip necesita más vistas para cobrar.",
+      "Es el nicho con más público en España y tiene la campaña en español mejor pagada de hoy: FotMob Spain, pensada justo para público de España. Además, varias campañas de música piden edits de deporte y entran también aquí.",
     datos: [
-      ["Campañas en español (18/10)", "Víctor Rodríguez (pódcast, CEO de Over Group) y Christian Núñez (evento Next Level)"],
-      ["Tarifa en TikTok", "1,80 $ y 2,50 $ por 1.000 vistas"],
-      ["Clippers trabajando", "7 y 6"],
-      ["Vistas por clip aprobado", "5.518 y 14.541 de media"],
-      ["Para cobrar un clip", "≈5.600 y 10.000 vistas. En Víctor Rodríguez la media se queda justo en el mínimo: la app la marca «Dudosa»"],
+      ["Campañas (02/11)", "FotMob Spain (en español, para público de España) y 12 más de deporte en inglés"],
+      ["Lo que paga de verdad", "FotMob Spain: ≈54 $ por clip aprobado, con solo 3 clippers y 4.247 $ por repartir"],
+      ["Ojo con la fecha", "FotMob Spain termina el 14/11: si quieres entrar, esta cuenta va la segunda. FotMob hace campañas por países (hoy también Alemania): es probable que repita"],
+      ["Para cobrar un clip", "≈2.000 vistas en FotMob Spain"],
     ],
-    clips: ["Una idea de negocio explicada en menos de 60 segundos", "Un error que cuenta el invitado y lo que aprendió", "Una respuesta directa a una pregunta incómoda", "Una opinión que va contra lo que piensa la mayoría"],
-    ganchos: ["Nadie te cuenta esto de montar un negocio", "Este fue su mayor error", "La pregunta que le incomodó"],
-    herramientas: "Víctor Rodríguez pide clips verticales de 30 a 60 segundos con subtítulos (lo dice su campaña). La Fábrica de clips del Mac localiza los momentos en episodios largos.",
-    ojo: "Next Level es un evento de network marketing: corta lo que dicen, pero no prometas ganancias en tus textos.",
+    clips: ["Lo que pide FotMob: la app en pantalla con datos reales (notas de jugadores, resultados, estadísticas)", "Un dato del partido de ayer que sorprende, enseñado en la app", "La previa de un partido grande con las estadísticas de la app"],
+    ganchos: ["Mira la nota que le ha puesto FotMob", "Este dato no lo sabía nadie", "El partido de hoy en 3 datos"],
+    herramientas: "Graba la pantalla del iPhone con la app que da la campaña y explícalo con texto en pantalla y subtítulos. Ritmo rápido.",
+    ojo: "Nunca imágenes de partidos de la tele: son de LaLiga, la UEFA y las cadenas, y TikTok las borra. Usa solo el material que te da cada campaña. Cuidado con las campañas de apuestas deportivas: la app las marca y no las recomienda.",
   },
   {
-    id: "creadores",
-    nombre: "Creadores hispanos: retos, viajes y estilo de vida",
-    foto: "Una brújula, en blanco sobre naranja. Diseño propio: nunca la cara de los creadores.",
-    claves: "marca personal, personal brand, lifestyle, estilo de vida, bali, sobreviv, reto, viaj, aventura",
+    id: "pop",
+    nombre: "Música pop, indie y edits de cine (sin cara)",
+    foto: "Una claqueta de cine con una nota musical, en blanco sobre rosa. Diseño propio: sin fotos de artistas ni carteles de películas.",
+    claves: "pop, indie, rock, band, country music, acoustic, soul, singer, movie, film, cine, music video, videoclip, anime, trailer, song, music",
+    idiomas: "es,en",
     color: "rosa",
     porque:
-      "Es el nicho con los clips que más cobran: en Pablo Pérez un clip medio saca unos 21.800 vistas, unos 21,80 $, y la app la marca «Renta». A cambio, pide 10.000 vistas por clip para cobrar y hay que solicitar entrar.",
+      "La segunda cuenta de música, con otro estilo para no competir con la de electrónica: canciones pop, indie, rock y country, videoclips y tráileres de cine. Así cada cuenta tiene su público y no repites canciones entre tus cuentas.",
     datos: [
-      ["Campañas en español (18/10)", "Pablo Pérez (Sobreviviendo en Bali con 100 €) y Adriano Finucci (nueva)"],
-      ["Tarifa en TikTok", "1,00 $ y 0,50 $ por 1.000 vistas"],
-      ["Clippers trabajando", "40 y 1"],
-      ["Vistas por clip aprobado", "21.770 en Pablo Pérez"],
-      ["Para cobrar un clip", "10.000 y 5.000 vistas. ARZ Urus termina hacia el 26/10 y pide 20.000: no es para una cuenta recién creada"],
+      ["Campañas (02/11)", "25 encajan con esta cuenta, 12 de ellas joyas; casi todas en inglés"],
+      ["Lo que paga de verdad", "Film Reality (app de cine) ≈20 $, Ryan Gosling's Band ≈9 $ y A24 «Slayground» ≈7 $ por clip aprobado"],
+      ["Además", "Las canciones generales (Leon Bridges, Ella Langley, Zach Top) valen para las dos cuentas de música: elige en el Radar a cuál va cada una"],
+      ["Para cobrar un clip", "≈1.000–2.000 vistas"],
     ],
-    clips: ["El momento más fuerte de un reto o una aventura", "Una frase suya que resume su forma de ver la vida", "Situaciones reales que salen mal o bien", "El antes y el después de algo que cuenta"],
-    ganchos: ["No te vas a creer cómo terminó esto", "Así vive con 100 €", "Esto le pasó de verdad"],
-    herramientas: "Ritmo rápido: cortes cada pocos segundos, subtítulos grandes y el momento clave al principio.",
-    ojo: "Pablo Pérez hay que solicitarla: hazlo cuando la cuenta ya tenga unos cuantos clips publicados.",
+    clips: ["El estribillo de la canción oficial sobre el videoclip o las escenas que da la campaña", "Un tráiler cortado en su momento más fuerte", "Un texto corto arriba que cuente qué pasa"],
+    ganchos: ["Esta canción no sale de mi cabeza", "La escena que lo cambió todo", "Escúchala hasta el final"],
+    herramientas: "La canción oficial de la campaña sobre las escenas o el videoclip que dé la campaña. Texto corto arriba que cuente qué pasa.",
+    ojo: "Igual que en electrónica: solo el material que da la campaña o fondos con licencia, nunca escenas cogidas de internet.",
+  },
+  {
+    id: "gaming",
+    nombre: "Gaming y videojuegos (sin cara)",
+    foto: "Un mando de consola, en blanco sobre azul. Diseño propio: sin logos de juegos ni de consolas.",
+    claves: "gaming, game, gameplay, gamer, videojuego, fortnite, valorant, minecraft, roblox, call of duty, warzone, gta",
+    idiomas: "es,en",
+    color: "",
+    porque:
+      "El gameplay se entiende sin idioma, así que funciona con público de España, y hay campañas grandes y largas (Roblox, Minecraft). Paga menos por clip que la música (≈6 $ de mediana): es la 5.ª cuenta. Call of Duty MW4 ya saca campañas por idioma (francés y árabe): si sale una en español, esta cuenta estará lista.",
+    datos: [
+      ["Campañas (02/11)", "43 encajan con esta cuenta, 12 de ellas joyas; en inglés"],
+      ["Lo que paga de verdad", "HardcoreSMP (Minecraft) ≈17 $, How to God ≈6 $ y Showcase (Roblox) ≈4,50 $ por clip aprobado; Showcase tiene 13.600 $ por repartir"],
+      ["Call of Duty", "Las dos en inglés se quedan sin dinero en unos 7 días y la árabe pide público del Golfo: hoy no valen"],
+      ["Para cobrar un clip", "≈1.000–2.000 vistas en la mayoría"],
+    ],
+    clips: ["El momento más fuerte del tráiler o del gameplay oficial, en los 2 primeros segundos", "Una jugada o un fallo que sorprende", "Lo nuevo de un estreno (mapa, arma, modo)"],
+    ganchos: ["Nadie esperaba esto", "Lo nuevo de este juego en 20 segundos", "La jugada de la semana"],
+    herramientas: "Material oficial de cada campaña (tráiler, gameplay). El momento más fuerte primero y subtítulos en español.",
+    ojo: "Algunas campañas son de juegos con premios o apuestas (cajas, «gana dinero jugando»): la app las marca como riesgo. Usa solo el material de la campaña.",
   },
 ];
 
@@ -172,11 +175,17 @@ function vistaEstrategia() {
     });
 }
 
-// Nichos de versiones anteriores (hasta la 4.8 eran 4, con otros nombres y usuarios de ejemplo «@…nicho»)
+// Nichos de versiones anteriores y en qué nicho nuevo se convierten. Hasta la 4.8 eran 4 con otros nombres;
+// en la 4.18 (02/11/2026) Música pasa a Electrónica y las cuentas sin campañas que rentaran (Textos, Creadores y Negocios)
+// pasan a Pop y cine, Fútbol y Gaming. Ninguna de esas cuatro estaba creada todavía en TikTok.
 const NICHOS_ANTIGUOS = {
-  "Creadores hispanos: marca personal y estilo de vida": "creadores",
-  "Tendencias y música en español (sin cara)": "tendencias",
-  "Textos y humor del día a día (sin cara)": "textos",
+  "Creadores hispanos: marca personal y estilo de vida": "futbol",
+  "Tendencias y música en español (sin cara)": "electronica",
+  "Textos y humor del día a día (sin cara)": "pop",
+  "Música y tendencias en español (sin cara)": "electronica",
+  "Textos en español: frases y situaciones (sin cara)": "pop",
+  "Creadores hispanos: retos, viajes y estilo de vida": "futbol",
+  "Negocios y emprendimiento (pódcast y eventos)": "gaming",
 };
 // Crea las cuentas que falten y pone al día las que se crearon con una versión anterior, sin duplicar ninguna.
 // El perfil de cada cuenta (usuario, correo, nombre, biografía y foto) no está en el código, que es público en la web:
@@ -187,14 +196,18 @@ function actualizarCuentasRecomendadas() {
   NICHOS_RECOMENDADOS.forEach((ni) => {
     const a = D.cuentas.find((c) => c.nicho === ni.nombre || NICHOS_ANTIGUOS[c.nicho] === ni.id || c.usuario === "@…" + ni.id);
     if (!a) {
-      D.cuentas.push({ id: uid(), red: "TikTok", usuario: "@…" + ni.id, nicho: ni.nombre, claves: ni.claves, estado: "calentando", objetivoDia: 1, notas: ni.herramientas });
+      D.cuentas.push({ id: uid(), red: "TikTok", usuario: "@…" + ni.id, nicho: ni.nombre, claves: ni.claves, idiomas: ni.idiomas, estado: "calentando", objetivoDia: 1, notas: ni.herramientas });
       creadas++;
       return;
     }
     const deEjemplo = !a.usuario || a.usuario.startsWith("@…");
     const antes = JSON.stringify(a);
-    if (deEjemplo) Object.assign(a, { nicho: ni.nombre, claves: ni.claves, notas: a.notas || ni.herramientas });
-    else if (NICHOS_ANTIGUOS[a.nicho]) a.nicho = ni.nombre;
+    if (deEjemplo) Object.assign(a, { nicho: ni.nombre, claves: ni.claves, idiomas: ni.idiomas, notas: a.notas || ni.herramientas });
+    // Al cambiar de nicho, sus palabras clave e idiomas son las del nicho nuevo (las antiguas llevarían campañas que ya no tocan)
+    else if (NICHOS_ANTIGUOS[a.nicho]) {
+      Object.assign(a, { nicho: ni.nombre, claves: ni.claves, idiomas: ni.idiomas });
+      soltarCampanasQueNoEncajan(a);
+    }
     if (!n(a.objetivoDia)) a.objetivoDia = 1;
     if (JSON.stringify(a) !== antes) actualizadas++;
   });
@@ -206,11 +219,21 @@ function actualizarCuentasRecomendadas() {
   if (creadas || actualizadas) guardar();
   return { creadas, actualizadas };
 }
+// Una cuenta que cambia de nicho deja de llevar las campañas que el piloto le asignó y ya no encajan con ella
+// (si no, el Radar le seguiría mandando las del nicho anterior). Las que tienen clips o añadiste tú no se tocan.
+function soltarCampanasQueNoEncajan(a) {
+  const items = typeof radar === "function" ? radar().items || [] : [];
+  D.campanas.forEach((k) => {
+    if (k.cuentaSugerida !== a.id || !(k.notas || "").startsWith("Añadida por el piloto automático") || D.clips.some((x) => x.campanaId === k.id)) return;
+    const c = items.find((x) => x.id === k.radarId);
+    if (c && !encaje(c, a)) delete k.cuentaSugerida;
+  });
+}
 // Al abrir la app (o al llegar datos de otro dispositivo): si quedan cuentas de ejemplo de una versión anterior, se ponen al día solas
 function revisarCuentasAntiguas() {
   if (!D.cuentas.some((c) => (c.usuario || "").startsWith("@…") || NICHOS_ANTIGUOS[c.nicho])) return;
   const { creadas, actualizadas } = actualizarCuentasRecomendadas();
-  if (creadas || actualizadas) aviso("Tus cuentas se han puesto al día con las 5 cuentas nuevas (Estrategia → Las 5 cuentas)");
+  if (creadas || actualizadas) aviso("Tus cuentas se han puesto al día con los 5 nichos nuevos (Estrategia → Las 5 cuentas)");
 }
 
 function tabCobro() {
@@ -283,7 +306,15 @@ function tabNichos() {
   const copiar = (t) => `<button class="btn peq" data-copiar="${esc(t)}" title="Copiar">Copiar</button>`;
   return `
   <h2 style="margin-top:6px">Las 5 cuentas: un nicho de clipping cada una</h2>
-  <p>Estos 5 nichos salen de un <b>estudio de las campañas reales</b> de Whop y Vyro leídas con el Radar (15, 16 y 18/10/2026), no de webs del sector. Criterio: que haya <b>campañas en español</b> con presupuesto y que paguen en TikTok. Vyro no tiene ninguna en español: todas son de Whop.</p>
+  <p>Estos 5 nichos salen de leer <b>las 444 campañas de Whop y Vyro</b> (02/11/2026) y medir lo que pagan de verdad (dinero gastado ÷ clips aprobados), no de webs del sector. Criterio: <b>los que más rentan y funcionan con público de España</b>: que paguen en TikTok, no pidan público de otro país, no sean de apuestas y se entiendan sin idioma (música, deporte, videojuegos) o estén en español.</p>
+  <table style="margin:8px 0 12px"><thead><tr><th>Nicho</th><th class="num">Campañas que rentan y no piden público de otro país</th><th class="num">Lo que paga un clip aprobado (mediana)</th></tr></thead><tbody>
+    <tr><td>Entretenimiento (videojuegos, cine, marcas y streamers en inglés)</td><td class="num">26</td><td class="num">≈13 $</td></tr>
+    <tr><td>Música</td><td class="num">19</td><td class="num">≈12 $</td></tr>
+    <tr><td>Videojuegos (aparte de los anteriores)</td><td class="num">6</td><td class="num">≈6 $</td></tr>
+    <tr><td>Deporte</td><td class="num">3</td><td class="num">≈6 $ (FotMob Spain, ≈54 $)</td></tr>
+    <tr><td>En español (todas)</td><td class="num">4</td><td class="num">Muy desigual: de 2,50 $ a 54 $</td></tr>
+  </tbody></table>
+  <p class="peq">Lectura del 02/11/2026. Finanzas en inglés paga bien, unos 20 $ por clip, pero no encaja con una cuenta en español; política, apuestas y las que piden público de EE. UU., México o Canadá se descartan.</p>
 
   <h3>Las campañas que más te rentan ahora mismo</h3>
   ${mejoresAhora()}
@@ -310,7 +341,7 @@ function tabNichos() {
       ${c.id ? `<div class="peq" style="margin:-4px 0 10px">Estos datos son privados: solo están en tus datos (Cuentas), no en el código de la app. <button class="btn peq" data-editar-cuenta="${esc(c.id)}">Cambiarlos</button></div>` : ""}
       <p>${esc(n.porque)}</p>
       <table style="margin:8px 0">${n.datos.map(([k, v]) => `<tr><td style="width:220px" class="peq">${k}</td><td>${esc(v)}</td></tr>`).join("")}</table>
-      <div class="peq" style="margin-bottom:10px">Datos de las campañas: ${fiab("oficial")} · Radar del 18/10/2026</div>
+      <div class="peq" style="margin-bottom:10px">Datos de las campañas: ${fiab("oficial")} · Radar del 02/11/2026</div>
       <b>Qué momentos cortar</b> <span class="peq">(consejo)</span><ul>${n.clips.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
       <b>Ganchos de ejemplo</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px">${n.ganchos.map((g) => `<span class="chip">${esc(g)}</span>`).join("")}</div>
       <b>Cómo editarlo</b><p style="margin-top:4px">${esc(n.herramientas)}</p>
@@ -332,7 +363,7 @@ function tabCrear() {
     <tr><td><b>Tener 18 años o más</b> y poner tu fecha de nacimiento real</td><td>TikTok exige 18 para las funciones de dinero, y Whop y Vyro también. Mentir en la edad es motivo de bloqueo.</td><td>${fiab("oficial")}</td></tr>
     <tr><td><b>Un correo distinto para cada cuenta</b></td><td>Cada correo y cada número de teléfono solo se pueden vincular a <b>una</b> cuenta de TikTok. Por eso hay 5 Gmail (los tienes en «Las 5 cuentas»).</td><td>${fiab("oficial")}</td></tr>
     <tr><td><b>Tu teléfono, solo en una</b></td><td>Por la misma regla: ponlo en la cuenta que más te importe (Dinero). Las otras entran con su correo.</td><td>${fiab("oficial")}</td></tr>
-    <tr><td><b>Cuentas personales</b>, no de empresa</td><td>Las cuentas de empresa solo pueden usar la biblioteca de música comercial: las campañas de Música y Textos piden canciones que no estarían.</td><td>${fiab("oficial")}</td></tr>
+    <tr><td><b>Cuentas personales</b>, no de empresa</td><td>Las cuentas de empresa solo pueden usar la biblioteca de música comercial: las campañas de música piden canciones que no estarían.</td><td>${fiab("oficial")}</td></tr>
     <tr><td><b>Contraseñas distintas</b> y guardadas en el Llavero de iCloud</td><td>Si roban una, no caen las demás. Activa también la verificación en dos pasos en cada Gmail.</td><td>Recomendación</td></tr>
   </tbody></table>
 
@@ -371,7 +402,7 @@ function tabCrear() {
     <tr><td><b>Clips fijados</b></td><td>Cuando tengas varios, fija arriba los 3 que más vistas hayan tenido: son la mejor presentación de la cuenta.</td></tr>
     <tr><td><b>Constancia</b></td><td>Publicar todos los días a horas parecidas hace que la cuenta parezca viva y da datos para mejorar.</td></tr>
   </tbody></table>
-  ${nota("<b>Lo que no hay que hacer para llamar la atención:</b> pedir «me gusta», seguidores o regalos a cambio de algo (lo que intenta manipular para eso no sale en «Para ti»), usar la cara, el nombre o el logo de un creador o de una marca en tu perfil (suplantación), comprar seguidores o hacer sorteos, y prometer ganancias en Dinero o Negocios. Todo eso lo prohíben TikTok, Whop o Vyro.", "")}
+  ${nota("<b>Lo que no hay que hacer para llamar la atención:</b> pedir «me gusta», seguidores o regalos a cambio de algo (lo que intenta manipular para eso no sale en «Para ti»), usar la cara, el nombre o el logo de un creador o de una marca en tu perfil (suplantación), comprar seguidores o hacer sorteos, y prometer ganancias en Dinero. Todo eso lo prohíben TikTok, Whop o Vyro.", "")}
   ${fuente("Normas de la comunidad de TikTok («Integridad y autenticidad» y «Requisitos del feed Para ti»); el resto son recomendaciones de presentación, no normas.")}
 
   <h2>Varias campañas en una cuenta y cambiar de campaña</h2>
@@ -396,9 +427,9 @@ function tabCrear() {
   ${fuente("Centro de ayuda de TikTok (añadir y cambiar de cuenta); blog oficial de TikTok para empresas sobre el programador de vídeos de la web. El plazo para programar varía según la cuenta: lo verás en la propia web.")}
   <h3>Orden recomendado</h3>
   <table><thead><tr><th>Cuándo</th><th>Qué</th></tr></thead><tbody>
-    <tr><td><b>Día 1</b></td><td>Crear los 5 Gmail y las 5 cuentas (así reservas los usuarios) con foto y biografía.</td></tr>
-    <tr><td><b>Semana 1</b></td><td>Calentar las 5: mirar vídeos de su tema, seguir a cuentas del nicho y subir <b>1 clip al día</b> en Dinero, Música y Textos.</td></tr>
-    <tr><td><b>Semanas 2–3</b></td><td>Empezar Negocios y Creadores, y solicitar Pablo Pérez cuando Creadores tenga varios clips publicados.</td></tr>
+    <tr><td><b>Día 1</b></td><td>Crear los Gmail y las cuentas que te deje Google (así reservas los usuarios) con foto y biografía.</td></tr>
+    <tr><td><b>Semana 1</b></td><td>Dinero y Música electrónica: calentar (mirar vídeos de su tema, seguir a cuentas del nicho) y subir <b>1 clip al día</b>. Crear Fútbol en cuanto puedas si quieres llegar a FotMob Spain (termina el 14/11).</td></tr>
+    <tr><td><b>Semanas 2–3</b></td><td>Crear Pop y cine y Gaming, una cada pocos días (Google no deja crear muchos Gmail seguidos), con 1 clip al día cada una.</td></tr>
     <tr><td><b>Después</b></td><td>2 clips al día en las cuentas que mejor respondan (Números te lo dice) y como mínimo 1 en las demás.</td></tr>
   </tbody></table>
   <p class="peq">Es una propuesta para que una sola persona pueda con todo: 5 clips al día la primera semana y unos 10 después. No es una norma de TikTok.</p>`;
@@ -452,13 +483,13 @@ function tabHoras() {
   <h3>Reparto propuesto para las 5 cuentas</h3>
   <p>No publiques las 5 a la vez. Repártelas dentro de la franja buena:</p>
   <table><thead><tr><th>Cuenta</th><th>Clip 1</th><th>Clip 2</th><th>Extra fin de semana</th></tr></thead><tbody>
-    <tr><td>Negocios y emprendimiento</td><td>18:00</td><td>21:00</td><td>Domingo 10:00</td></tr>
     <tr><td>Dinero, trading e inversión</td><td>19:00</td><td>22:00</td><td>Sábado 12:00</td></tr>
-    <tr><td>Creadores hispanos</td><td>20:00</td><td>22:30</td><td>Domingo 12:30</td></tr>
-    <tr><td>Música y tendencias</td><td>18:30</td><td>21:30</td><td>Domingo 9:30</td></tr>
-    <tr><td>Textos y humor del día a día</td><td>19:30</td><td>22:30</td><td>Sábado 10:30</td></tr>
+    <tr><td>Música electrónica y nightlife</td><td>18:30</td><td>21:30</td><td>Viernes y sábado 20:00</td></tr>
+    <tr><td>Fútbol y deporte</td><td>18:00</td><td>Al acabar el partido del día</td><td>Domingo 12:30</td></tr>
+    <tr><td>Música pop, indie y cine</td><td>20:00</td><td>22:30</td><td>Domingo 9:30</td></tr>
+    <tr><td>Gaming y videojuegos</td><td>19:30</td><td>22:30</td><td>Sábado 10:30</td></tr>
   </tbody></table>
-  <p class="peq">Es un punto de partida propuesto a partir de los estudios, no un dato. Ajústalo con las estadísticas de cada cuenta. Si una campaña de Tendencias busca público de México, ten en cuenta que allí es 7 u 8 horas antes que en España (según la época del año): su tarde-noche es tu madrugada. Mira en TikTok Studio de dónde es tu público.</p>
+  <p class="peq">Es un punto de partida propuesto a partir de los estudios, no un dato. Ajústalo con las estadísticas de cada cuenta. Si una campaña busca público de otro país (México, EE. UU.), ten en cuenta que allí es entre 6 y 9 horas antes que en España (según el país y la época del año): su tarde-noche es tu madrugada. Mira en TikTok Studio de dónde es tu público.</p>
   ${fuente("Metricool, estudio TikTok 2026; Buffer, «Best time to post on TikTok in 2026»; Sprout Social y Hootsuite según recopilaciones de 2026.")}`;
 }
 
@@ -523,10 +554,10 @@ function tabIA() {
   ${fuente("OpusClip y ElevenLabs, precios oficiales (15/10/2026); Vizard, Submagic y CapCut según comparativas de Choppity, FrameKit y Less Tools (2026).")}
   <h3>Qué usar en cada cuenta</h3>
   <table><thead><tr><th>Cuenta</th><th>Combinación</th></tr></thead><tbody>
-    <tr><td>Negocios y emprendimiento</td><td>OpusClip (pódcast de 1–2 h) + subtítulos + ChatGPT/Claude para la descripción. Víctor Rodríguez pide clips de 30 a 60 s con subtítulos.</td></tr>
-    <tr><td>Dinero, trading e inversión</td><td>CapCut con subtítulos automáticos, cifras y palabras clave resaltadas. Clips cortos centrados en una frase.</td></tr>
-    <tr><td>Creadores hispanos</td><td>CapCut (cortes rápidos, zoom en el momento fuerte) o Submagic para subtítulos animados.</td></tr>
-    <tr><td>Tendencias y música</td><td>CapCut con plantillas de texto y siempre el sonido oficial de TikTok que pide la campaña.</td></tr>
+    <tr><td>Dinero, trading e inversión</td><td>Mesa de corte de esta app para localizar momentos y subtítulos con cifras y palabras clave resaltadas. Clips cortos centrados en una frase.</td></tr>
+    <tr><td>Música electrónica y Pop y cine</td><td>El material de la campaña con el sonido oficial de TikTok que pide; CapCut para el texto de arriba. El drop o el estribillo, en los 2 primeros segundos.</td></tr>
+    <tr><td>Fútbol y deporte</td><td>Grabación de pantalla del iPhone con la app de la campaña (FotMob) + subtítulos y texto en pantalla.</td></tr>
+    <tr><td>Gaming y videojuegos</td><td>Mesa de corte para reencuadrar el gameplay oficial a vertical y poner subtítulos en español.</td></tr>
   </tbody></table>
   <p class="peq">Para empezar sin gastar: CapCut gratis + la Mesa de corte de esta app para localizar momentos. Cuando lleguen los primeros cobros, OpusClip Starter ahorra mucho tiempo.</p>`;
 }

@@ -20,8 +20,12 @@ const NICHO_CLAVES = [
   [/entrevista|true crime|crimen|historia|aventura/i, ["interview", "entrevista", "true crime", "crimen", "crime", "historia", "story", "storytime", "documental", "aventura", "viaj", "travel", "sobreviv", "reto", "challenge", "vlog"]],
   [/marca personal|personal brand|lifestyle|estilo de vida/i, ["personal brand", "marca personal", "lifestyle", "estilo de vida", "motivaci"]],
   [/tendencia|m[úu]sica|meme/i, ["song", "canción", "cancion", "música", "musica", "music", "sound", "trend", "tendencia", "meme"]],
-  [/gaming|videojuego|juego/i, ["gaming", "game", "videojuego", "juego", "fortnite", "valorant", "minecraft"]],
-  [/fitness|gym|deporte|salud/i, ["fitness", "gym", "workout", "entren", "salud", "health", "sport", "deporte"]],
+  // Estilos de música (desde la 4.18 hay dos cuentas de música): sus palabras deciden a cuál va cada canción
+  [/electr[óo]nica|nightlife/i, ["edm", "house", "techno", "dance", "dj", "electronic", "electrónica", "electronica", "nightlife", "club", "rave", "festival", "trance", "ibiza", "remix", "drop", "drum and bass", "funk"]],
+  [/pop|indie|cine/i, ["pop", "indie", "rock", "band", "country music", "acoustic", "r&b", "soul", "singer", "movie", "film", "cine", "cinema", "película", "music video", "videoclip", "mv", "anime", "trailer"]],
+  [/gaming|videojuego|juego/i, ["gaming", "game", "gameplay", "gamer", "videojuego", "juego", "fortnite", "valorant", "minecraft", "roblox", "call of duty", "warzone", "gta", "league of legends"]],
+  [/f[úu]tbol/i, ["football", "fútbol", "futbol", "soccer", "laliga", "la liga", "champions", "fotmob", "matchday", "sports", "deporte", "f1", "nba", "ufc", "mma", "boxing", "boxeo"]],
+  [/fitness|gym|salud/i, ["fitness", "gym", "workout", "entren", "salud", "health", "sport", "deporte"]],
 ];
 
 let radarFiltro = { texto: "", idioma: "", plat: "", cuenta: "", soloJoyas: false, orden: "puntos" };
@@ -45,13 +49,15 @@ function textoCampana(c) {
 
 // Palabras demasiado generales: solas no bastan para decir que una campaña es de un nicho
 // («trending» sale en campañas de streamers y «meme» en las de un cristal de coche); suman medio punto
-const CLAVES_DEBILES = new Set(["trend", "tendencia", "meme", "viral", "sound", "reto", "challenge", "historia", "story"]);
+const CLAVES_DEBILES = new Set(["trend", "tendencia", "meme", "viral", "sound", "reto", "challenge", "historia", "story", "club", "film", "house", "festival", "deporte"]);
 const escRx = (k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Cuánto encaja la campaña con el nicho de la cuenta: cada palabra clave que aparece al principio de una palabra suma 1
 // (las generales, 0,5). «reto» ya no encaja con «secreto», ni «ceo» con otra palabra. Por debajo de 1 no encaja (0).
+// Palabras cortas que solo cuentan enteras (o en plural): «pop» no es «popular» ni «rock» es «rocket»
+const CLAVES_ENTERAS = new Set(["pop", "rock", "band", "club", "dj", "mv", "edm", "f1", "nba", "mma", "ufc", "gta", "soul", "house", "funk", "drop", "game", "cine", "film", "kick"]);
 function encaje(c, a) {
   const t = textoCampana(c);
-  const p = clavesCuenta(a).reduce((s, k) => s + (new RegExp(`(^|[^a-z0-9áéíóúüñ])${escRx(k)}`, "i").test(t) ? (CLAVES_DEBILES.has(k) ? 0.5 : 1) : 0), 0);
+  const p = clavesCuenta(a).reduce((s, k) => s + (new RegExp(`(^|[^a-z0-9áéíóúüñ])${escRx(k)}${CLAVES_ENTERAS.has(k) ? "s?(?![a-z0-9áéíóúüñ])" : ""}`, "i").test(t) ? (CLAVES_DEBILES.has(k) ? 0.5 : 1) : 0), 0);
   return p >= 1 ? p : 0;
 }
 
@@ -74,8 +80,16 @@ const PUBLICO_PAIS = [
   [/brasil|brazil|🇧🇷/i, "Brasil"],
   [/argentin|🇦🇷/i, "Argentina"],
   [/colombia|🇨🇴/i, "Colombia"],
+  [/\b(gcc|mena)\b|arab|عربي|saudi|emirat|\buae\b/i, "países árabes"],
+  [/portugal|portuguese (audience|market)|🇵🇹/i, "Portugal"],
+  [/\bgermany\b|german[- ](audience|market|speaking)|deutschland|🇩🇪/i, "Alemania"],
+  [/\bfrance\b|french[- ](audience|market|speaking)|🇫🇷/i, "Francia"],
+  [/\bitaly\b|italian[- ](audience|market|speaking)|🇮🇹/i, "Italia"],
 ];
 const PAIS_PROPIO = "España"; // una campaña que se queda sin dinero antes no le da tiempo a una cuenta nueva
+// Campañas que piden justo tu público (FotMob Spain: «targeting audiences in Spain»): con cuentas desde España es más fácil cumplirlo
+const PUBLICO_ESPANA = /\bspain\b|españa|🇪🇸|spanish audience|audiences? in spain|p[úu]blico (de |en )?españ/i;
+const publicoEspana = (c) => PUBLICO_ESPANA.test(`${c.nombre} ${c.desc || ""}`);
 
 // Rentabilidad real con lo que publica Whop: lo que la campaña ya ha gastado, repartido entre sus clips aprobados y sus clippers,
 // y a qué ritmo gasta (para saber cuándo se queda sin dinero). Vyro no publica clips aprobados ni clippers.
@@ -161,6 +175,7 @@ function puntuar(c, cuentaObj) {
   if (!R.tiktok) (p -= 30), motivos.push("No paga en TikTok");
   const pais = publicoPais(c);
   if (pais) (p -= 20), motivos.push(`Pide público de ${pais}: difícil con cuentas desde España`);
+  else if (publicoEspana(c)) (p += 10), motivos.push("Pide público de España: justo el de tus cuentas");
   if (dv != null && dv < DIAS_MINIMOS) p -= 15;
   if (v.tipo === "no") p -= 15;
   return { puntos: Math.max(0, Math.min(100, Math.round(p))), motivos, rent: R };
@@ -252,8 +267,13 @@ function procesarRadar(r, silencioso) {
   r.items.forEach((c) => (R.vistos[c.id] ||= r.actualizado));
   // Se guardan todas las del idioma elegido y, del resto, las mejores (para no hacer pesada la sincronización)
   const evaluados = r.items.map(evaluar).sort((a, b) => b.puntos - a.puntos);
-  // Se guardan todas las del idioma del Radar, las de otros idiomas de tus cuentas que encajan con ellas (hasta 80) y, del resto, las mejores
-  const deCuentas = evaluados.filter((c) => c.idioma !== idiomaObjetivo() && D.cuentas.some((a) => idiomasCuenta(a).includes(c.idioma) && encaje(c, a) > 0)).slice(0, 80);
+  // Se guardan todas las del idioma del Radar, las de otros idiomas que encajan con cada cuenta (las 30 mejores de cada una,
+  // para que la música, que tiene muchas más, no deje sin sitio a las demás) y, del resto, las mejores
+  const deCuentas = [
+    ...new Set(
+      D.cuentas.flatMap((a) => evaluados.filter((c) => c.idioma !== idiomaObjetivo() && idiomasCuenta(a).includes(c.idioma) && encaje(c, a) > 0).slice(0, 30))
+    ),
+  ];
   const propias = [...evaluados.filter((c) => c.idioma === idiomaObjetivo()), ...deCuentas];
   const resto = evaluados.filter((c) => !propias.includes(c)).slice(0, Math.max(0, RADAR_MAX - propias.length));
   R.items = [...propias, ...resto].map(({ cuentaSug, puntos, motivos, joya, rent, ...c }) => c);
@@ -491,7 +511,7 @@ function tarjetaCampanaRadar(c, esNueva) {
           ${esNueva ? `<span class="chip ambar">Nueva</span>` : ""}
           ${c.solicitud ? `<span class="chip">Hay que solicitarla</span>` : ""}
           ${c.rent && !c.rent.tiktok ? `<span class="chip rosa">No paga en TikTok</span>` : ""}
-          ${publicoPais(c) ? `<span class="chip rosa">Pide público de ${publicoPais(c)}</span>` : ""}
+          ${publicoPais(c) ? `<span class="chip rosa">Pide público de ${publicoPais(c)}</span>` : publicoEspana(c) ? `<span class="chip verde">Público de España</span>` : ""}
           ${dedicada(c) ? `<span class="chip ambar">${dedicada(c) === "si" ? "Exige página dedicada" : "Puede exigir página dedicada"}</span>` : ""}
           ${cuentaAsignada(c) ? `<span class="chip verde">Para ${esc(cuentaAsignada(c).usuario)}</span>` : ""}
           ${c.bloqueada ? `<span class="chip">Bloqueada</span>` : ""}

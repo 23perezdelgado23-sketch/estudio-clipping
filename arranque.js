@@ -2,7 +2,7 @@
 // Estudio Clipping · «Empieza aquí»: plan de 30 días, rutina diaria, revisión semanal y errores típicos.
 // Lo que sale de condiciones oficiales se marca como tal; lo que sale de guías del sector, también.
 
-// Plan para una persona sola con 5 cuentas (decisión de Eduardo, 18/10/2026). Los IDs de pasos que ya existían se mantienen
+// Plan para una persona sola con 5 cuentas (decisión de Eduardo, 18/10/2026; nichos nuevos desde la 4.18, 02/11/2026). Los IDs de pasos que ya existían se mantienen
 // para no perder lo que ya estuviera marcado.
 const PLAN = [
   {
@@ -14,15 +14,15 @@ const PLAN = [
       ["p-claves", "Guardar cada contraseña en el Llavero de iCloud: una distinta para cada Gmail y cada cuenta de TikTok.", ""],
       ["p-whop", "Crear UNA cuenta en whop.com y entrar en Content Rewards (ver «Conseguir vídeos → Whop»).", "oficial"],
       ["p-vyro", "Opcional: crear UNA sola cuenta en vyro.com. Hoy no tiene campañas en español, así que puede esperar.", "oficial"],
-      ["p-capcut", "Instalar CapCut (gratis) para los textos de las cuentas de Música y Textos.", ""],
-      ["p-ajustes", "Rellenar Ajustes: el cambio del dólar y el objetivo de 3 clips al día (una por cuenta activa la primera semana).", ""],
+      ["p-capcut", "Instalar CapCut (gratis) para el texto de arriba de las cuentas de música.", ""],
+      ["p-ajustes", "Rellenar Ajustes: el objetivo de clips al día (uno por cuenta activa: 2 la primera semana). El cambio del dólar se pone solo.", ""],
     ],
   },
   {
     fase: "Fase 1 · Crear las 5 cuentas",
     cuando: "Días 1–2",
     pasos: [
-      ["p-tiktok", "Crear las 5 cuentas de TikTok desde Perfil → tu nombre → Añadir cuenta, cada una con su Gmail. Fecha de nacimiento real.", "oficial"],
+      ["p-tiktok", "Crear las cuentas de TikTok desde Perfil → tu nombre → Añadir cuenta, cada una con su Gmail, en este orden: Dinero, Música electrónica, Fútbol, Pop y cine y Gaming. Fecha de nacimiento real.", "oficial"],
       ["p-telefono", "Poner tu número de teléfono solo en una cuenta (Dinero): cada teléfono y cada correo solo se pueden vincular a una cuenta.", "oficial"],
       ["p-personal", "Dejarlas como cuenta personal y pública, no de empresa: las de empresa solo pueden usar la música comercial.", "oficial"],
       ["p-perfil", "Usuario, nombre, foto y biografía de cada una tal como vienen en Estrategia → Las 5 cuentas. Sin la cara ni el nombre de ningún creador y sin enlaces.", "oficial"],
@@ -36,10 +36,10 @@ const PLAN = [
     pasos: [
       ["p-usar", "Usar cada cuenta 10–15 minutos al día como una persona normal: ver vídeos de su tema y seguir a algunas cuentas del nicho.", "sector"],
       ["p-masivo", "Nada de acciones masivas (seguir o dar «me gusta» a todo de golpe) y nunca interactuar entre tus propias cuentas.", "oficial"],
-      ["p-unirse", "Unirse en Whop a las 3 campañas para empezar: Daniel Curto (Dinero), MY SONG SPANISH TREND (Música) y SPANISH TEXT TIKTOK (Textos). Mira antes el Radar por si han cambiado.", ""],
+      ["p-unirse", "Unirse en Whop a las campañas de la primera semana: las mejores de Dinero y de Música electrónica en «Lo mejor para cada cuenta» del Radar (cambian cada semana).", ""],
       ["p-apuntar", "Leer las reglas de cada campaña y apuntarlas en Campañas: tarifa, mínimo, máximo, presupuesto, fecha de fin, duración y etiqueta de publicidad.", "oficial"],
       ["p-conectar", "Conectar cada cuenta de TikTok en Whop al unirte a su campaña.", "oficial"],
-      ["p-uno", "Desde el día 3: 1 clip al día en Dinero, Música y Textos, en la franja de tarde (Estrategia → Horas).", "estudio"],
+      ["p-uno", "Desde el día 3: 1 clip al día en Dinero y en Música electrónica, en la franja de tarde (Estrategia → Horas).", "estudio"],
       ["p-check", "Antes de publicar cada clip: checklist de TikTok del clip, «Contenido de marca» activado y la etiqueta de publicidad al principio.", "oficial"],
       ["p-enviar", "Enviar el enlace de cada clip a su campaña nada más publicarlo.", "oficial"],
     ],
@@ -48,8 +48,8 @@ const PLAN = [
     fase: "Fase 3 · Las 5 cuentas en marcha",
     cuando: "Días 8–21",
     pasos: [
-      ["p-negocios", "Unir Negocios a Víctor Rodríguez o Next Level y Creadores a Adriano Finucci, y empezar 1 clip al día en las 5 cuentas.", ""],
-      ["p-pablo", "Solicitar Pablo Pérez cuando Creadores tenga varios clips publicados.", ""],
+      ["p-negocios", "Crear y arrancar Fútbol (FotMob Spain mientras dure, hasta el 14/11), Pop y cine y Gaming, cada una con las mejores campañas de su nicho en el Radar, y 1 clip al día en las 5.", ""],
+      ["p-pablo", "A las 2 semanas, mirar en Números qué cuenta rinde más y apostar por su nicho (por ejemplo, otra cuenta de música si es la que más cobra).", ""],
       ["p-48h", "Apuntar las vistas de cada clip a las 48 horas (Números → Actualizar vistas).", ""],
       ["p-semana1", "Hacer la revisión semanal cada domingo (pestaña «Revisión semanal»).", ""],
       ["p-rechazos", "Si te rechazan un clip, leer el motivo y corregirlo en el siguiente. Nunca reenviar el mismo.", "oficial"],
@@ -148,7 +148,7 @@ function tabPlan() {
   const sig = siguientePaso();
   return `
   <h2 style="margin-top:6px">Tu plan para empezar: tú solo, con 5 cuentas</h2>
-  <p>Sigue los pasos en orden y márcalos al hacerlos. Cada paso indica si viene de las condiciones oficiales, de un estudio o de guías del sector. Empiezas con 3 cuentas publicando (Dinero, Música y Textos, que cobran desde 1.000 vistas) y sumas Negocios y Creadores en la segunda semana, para que una sola persona pueda con todo.</p>
+  <p>Sigue los pasos en orden y márcalos al hacerlos. Cada paso indica si viene de las condiciones oficiales, de un estudio o de guías del sector. Empiezas con Dinero y Música electrónica (sus campañas cobran desde 1.000 vistas) y sumas Fútbol, Pop y cine y Gaming en los días siguientes, una a una, para que una sola persona pueda con todo.</p>
   <div class="tarjeta" style="margin:12px 0">
     <div style="display:flex;justify-content:space-between"><b>Progreso</b><span>${p.hechos} de ${p.total} pasos · ${p.pct} %</span></div>
     <div class="barra" style="margin-top:8px"><div style="width:${p.pct}%"></div></div>
@@ -202,7 +202,7 @@ function tabBaneo() {
   <h3>2. Antes de publicar cada clip</h3>
   ${lista([
     ["Estar unido a la campaña, dentro de fecha y con presupuesto", "Sin unirte no tienes permiso para usar ese material. Whop rechaza lo publicado después de la fecha de fin o cuando ya se ha pagado el máximo, y vigilarlo es cosa tuya.", "oficial"],
-    ["Usar solo el material de la campaña", "Whop exige que todo sea original salvo lo que te da la marca. Si necesitas un fondo (Música y Textos), que sea grabado por ti o de un banco gratuito con licencia, nunca «un vídeo que encuentres por internet».", "oficial"],
+    ["Usar solo el material de la campaña", "Whop exige que todo sea original salvo lo que te da la marca. Si necesitas un fondo (cuentas de música), que sea grabado por ti o de un banco gratuito con licencia, nunca «un vídeo que encuentres por internet».", "oficial"],
     ["Edición propia en cada clip", "Lo no original o reutilizado sin aportar nada no sale en «Para ti». Reencuadre, cortes, subtítulos y gancho.", "oficial"],
     ["Cumplir las reglas de la campaña", "Duración, menciones, hashtags, país del público. Si no, la marca rechaza el clip y puede banearte.", "oficial"],
     ["Etiqueta de publicidad visible sin pulsar «más»", "#Sponsored o #[Marca]Ad al principio de la descripción, no escondida entre otros hashtags. Es obligatoria en Whop y en Vyro.", "oficial"],
@@ -211,7 +211,7 @@ function tabBaneo() {
     ["La música que pide la campaña o el audio original", "Nada de canciones añadidas por tu cuenta: pueden tumbar el clip.", "oficial"],
     ["Etiqueta de IA si usas voces o imágenes realistas hechas con IA", "TikTok lo exige. Los subtítulos y cortes de la Fábrica no la necesitan.", "oficial"],
     ["Nada de campañas políticas", "TikTok no permite cobrar por contenido político (la app las marca en el Radar).", "oficial"],
-    ["No prometer ganancias", "En Dinero y Negocios, corta lo que dice el creador; no añadas tú promesas de dinero.", "oficial"],
+    ["No prometer ganancias", "En Dinero, corta lo que dice el creador; no añadas tú promesas de dinero.", "oficial"],
   ])}
 
   <h3>3. Todos los días</h3>

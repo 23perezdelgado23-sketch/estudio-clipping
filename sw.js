@@ -1,5 +1,5 @@
 // Estudio Clipping: con internet carga siempre la última versión publicada; sin internet, la última guardada.
-const CACHE = "estudio-clipping-20261028-190117";
+const CACHE = "estudio-clipping-20261102-181140";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()))
