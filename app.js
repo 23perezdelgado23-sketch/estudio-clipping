@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.24";
+const VERSION_APP = "4.25";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -2018,8 +2018,8 @@ const VISTAS = {
 // (por su id del Radar) las reglas leídas de su guía; después borra el archivo. Si la campaña aún no está en tus campañas, se crea «por unirte».
 async function importarPerfilesPrivados() {
   const p = await window.estudio.perfilesPendientes?.().catch(() => null);
-  if (!p?.cuentas && !p?.campanas && !p?.limpiarCampanas) return;
-  let n = 0, k = 0;
+  if (!p?.cuentas && !p?.campanas && !p?.limpiarCampanas && !p?.clips) return;
+  let n = 0, k = 0, q = 0;
   D.cuentas.forEach((c) => {
     const perfil = p.cuentas?.[c.nicho];
     if (!perfil) return;
@@ -2051,10 +2051,19 @@ async function importarPerfilesPrivados() {
     Object.assign(camp, datos);
     k++;
   });
-  if (!n && !k) return;
+  // Clips ya cortados fuera de la app (por ejemplo, los que prepara Claude con el mismo motor): entran en Clips con su campaña y su cuenta.
+  // Cada uno lleva «importId»: si ya está, no se duplica ni se tocan los cambios que hayas hecho en él.
+  (p.clips || []).forEach((x) => {
+    if (!x.importId || D.clips.some((c) => c.importId === x.importId)) return;
+    const { campanaRadarId, ...datos } = x;
+    const camp = D.campanas.find((k) => k.radarId === campanaRadarId);
+    D.clips.push({ id: uid(), autorId: window.nube?.miId?.() || "", estado: "listo", checks: {}, campanaId: camp?.id || "", cuentaId: cuentaDeCampana(camp) || "", ...datos });
+    q++;
+  });
+  if (!n && !k && !q) return;
   guardar();
   await window.estudio.perfilesHecho();
-  aviso([n && `Perfiles de ${n} cuenta(s)`, k && `reglas de ${k} campaña(s)`].filter(Boolean).join(" y ") + " guardados en tus datos privados");
+  aviso([n && `Perfiles de ${n} cuenta(s)`, k && `reglas de ${k} campaña(s)`, q && `${q} clip(s)`].filter(Boolean).join(" y ") + " guardados en tus datos privados");
   ir(seccion);
 }
 
