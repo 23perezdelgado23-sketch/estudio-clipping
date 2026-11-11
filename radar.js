@@ -142,7 +142,8 @@ function vistasCuenta(a) {
 // Agencias cuyas guías piden que la mayoría del público sea «Tier 1» (EE. UU., Reino Unido, Canadá y Australia), vídeo y texto en inglés,
 // y capturas de los países del público para aprobar el clip. Comprobado en sus guías el 02/11/2026 (Artist Influence: ZHU, Melly Mike
 // y Egzod; The Clip Ship: Kameron Marlowe y Zach Top). Su resumen en Whop no lo dice: por eso se marcan por agencia.
-const AGENCIAS_TIER1 = /^(artist influence|the clip ship)$/i;
+// Placements (Passive «Tokyo Girl», GTA 6): su guía pide un 60 % de vistas de países Tier 1 (comprobado el 11/11/2026).
+const AGENCIAS_TIER1 = /^(artist influence|the clip ship|placements)$/i;
 const TIER1 = "EE. UU. o Reino Unido (Tier 1)"; // corto: sale en un chip en el iPhone
 
 // País del público que pide la campaña según su nombre o descripción («for Mexican audiences»), si no es el tuyo
