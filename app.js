@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.26";
+const VERSION_APP = "4.27";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -2057,6 +2057,12 @@ async function importarPerfilesPrivados() {
     if (!x.importId) return;
     // «actualizar»: cambia solo los campos que trae (estado, programación…) de un clip ya importado
     const ya = D.clips.find((c) => c.importId === x.importId);
+    if (ya && x.borrar) {
+      // «borrar»: quita de Clips uno importado que se sustituye por otro (solo si no se ha publicado)
+      if (!CUENTAN_VISTAS.includes(ya.estado)) (D.clips = D.clips.filter((c) => c !== ya)), q++;
+      return;
+    }
+    if (x.borrar) return;
     if (ya) {
       if (x.actualizar) {
         const { actualizar, importId, campanaRadarId, ...cambios } = x;
