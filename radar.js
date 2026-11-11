@@ -28,7 +28,7 @@ const NICHO_CLAVES = [
   [/fitness|gym|salud/i, ["fitness", "gym", "workout", "entren", "salud", "health", "sport", "deporte"]],
 ];
 
-let radarFiltro = { texto: "", idioma: "", plat: "", cuenta: "", soloJoyas: false, orden: "puntos" };
+let radarFiltro = { texto: "", idioma: "", plat: "", cuenta: "", soloJoyas: false, soloEspana: true, orden: "puntos" };
 let radarLeyendo = false;
 
 const radar = () => (D.radar ||= { actualizado: "", items: [], vistos: {}, errores: [] });
@@ -56,6 +56,15 @@ function sinVoz(c) {
 // El idioma de la campaña vale para la cuenta: el del Radar siempre; otro de su ficha, solo si es música
 // o si le has asignado tú esa campaña a la cuenta (la has comprobado)
 const PIDE_ESPANOL = /\bspanish (clipping|captions?|copy|version|edition)\b|\b(in|into) spanish\b|en español|en castellano/i;
+// Funciona en España (Eduardo, 11/11/2026): en español o de música, sin pedir público de otro país, que pague en TikTok y sin apuestas, cripto ni política
+const valeEspana = (c) => (c.idioma === idiomaObjetivo() || sinVoz(c)) && !publicoPais(c) && (!(c.redes || []).length || c.redes.includes("tiktok")) && !RIESGO.test(textoCampana(c)) && !POLITICA.test(textoCampana(c));
+// Anuncios de productos y apps (pañales, apps de IA, cosmética, suplementos, finanzas…): poco llamativos para captar público en TikTok.
+// Llamativo: música, fiesta, humor, deporte, fútbol, gaming, entretenimiento, retos.
+const CATS_ANUNCIO = /technology|\bapps?\b|mobile app|consumer brand|health|wellness|beauty|skincare|finance|real estate|rental|trading|crypto|pets|productivity|e-?commerce|saas/i;
+const ANUNCIO_TXT = /app store|google play|download (the|our)|sign[- ]?ups?\b|install|\bugc\b|film yourself|slideshow|ai (agent|app|analyst)|study buddy|diaper|supplement|matcha|skincare/i;
+const CATS_LLAMATIVA = /music|sound campaign|dj|entertainment|comedy|humor|gaming|fortnite|roblox|minecraft|sports|football|soccer|reactions|memes|movies|tv/i;
+const esAnuncio = (c) => (c.cats || []).some((x) => CATS_ANUNCIO.test(x)) || ANUNCIO_TXT.test(`${c.nombre} ${c.desc || ""}`);
+const esLlamativa = (c) => !esAnuncio(c) && (c.cats || []).some((x) => CATS_LLAMATIVA.test(x));
 const idiomaVale = (c, a) => c.idioma === idiomaObjetivo() || (idiomasCuenta(a).includes(c.idioma) && (sinVoz(c) || (!!a && cuentaAsignada(c)?.id === a.id)));
 
 function clavesCuenta(a) {
@@ -143,7 +152,8 @@ function vistasCuenta(a) {
 // y capturas de los países del público para aprobar el clip. Comprobado en sus guías el 02/11/2026 (Artist Influence: ZHU, Melly Mike
 // y Egzod; The Clip Ship: Kameron Marlowe y Zach Top). Su resumen en Whop no lo dice: por eso se marcan por agencia.
 // Placements (Passive «Tokyo Girl», GTA 6): su guía pide un 60 % de vistas de países Tier 1 (comprobado el 11/11/2026).
-const AGENCIAS_TIER1 = /^(artist influence|the clip ship|placements)$/i;
+// Nepo (Hasan Piker x Nepo): «Tier 1 Majority + Tier 2», en inglés (guía revisada el 02/11/2026).
+const AGENCIAS_TIER1 = /^(artist influence|the clip ship|placements|nepo)$/i;
 const TIER1 = "EE. UU. o Reino Unido (Tier 1)"; // corto: sale en un chip en el iPhone
 
 // País del público que pide la campaña según su nombre o descripción («for Mexican audiences»), si no es el tuyo
@@ -203,6 +213,8 @@ function puntuar(c, cuentaObj) {
   if (cuentaObj ? idiomaVale(c, cuentaObj) : c.idioma === idiomaObjetivo()) p += 5;
   if (c.idioma !== idiomaObjetivo() && !sinVoz(c) && !(cuentaObj && cuentaAsignada(c)?.id === cuentaObj.id)) (p -= 20), motivos.push(`En ${(IDIOMAS[c.idioma] || c.idioma).toLowerCase()} y no es de música: desde España solo triunfa en español`);
   if (cuentaObj && (encaje(c, cuentaObj) || cuentaAsignada(c)?.id === cuentaObj.id)) (p += 5), motivos.push(`Para ${cuentaObj.usuario}`);
+  if (esAnuncio(c)) (p -= 15), motivos.push("Anuncio de un producto o una app: poco llamativo para captar público");
+  else if (esLlamativa(c)) (p += 5), motivos.push("Contenido llamativo (música, humor, deporte, gaming…)");
   if (c.solicitud) p -= 5;
   if (c.bloqueada) p -= 20;
   if (!R.tiktok) (p -= 30), motivos.push("No paga en TikTok");
@@ -232,7 +244,7 @@ function mejorCuenta(c) {
 // Se puede recomendar: en un idioma de la cuenta (o del Radar), paga en TikTok, no bloqueada, sin apuestas ni política y con tiempo para cobrar
 function recomendable(c, R = rentabilidad(c), a = null) {
   const t = textoCampana(c);
-  return (a ? idiomaVale(c, a) : c.idioma === idiomaObjetivo()) && R.tiktok && !publicoPais(c) && !c.bloqueada && !RIESGO.test(t) && !POLITICA.test(t) && n(c.restante) >= 100 && (R.diasVida == null || R.diasVida >= DIAS_MINIMOS);
+  return (a ? idiomaVale(c, a) : c.idioma === idiomaObjetivo()) && R.tiktok && !publicoPais(c) && !c.bloqueada && !RIESGO.test(t) && !POLITICA.test(t) && !esAnuncio(c) && n(c.restante) >= 100 && (R.diasVida == null || R.diasVida >= DIAS_MINIMOS);
 }
 
 function evaluar(c) {
@@ -387,6 +399,7 @@ function vistaRadar() {
         (!f.plat || c.plat === f.plat) &&
         (!f.cuenta || encaje(c, cuenta(f.cuenta)) > 0) &&
         (!f.soloJoyas || c.joya) &&
+        (!f.soloEspana || (valeEspana(c) && !esAnuncio(c))) &&
         (!f.veredicto || veredicto(c).tipo === f.veredicto)
     )
     .sort((a, b) => {
@@ -419,7 +432,7 @@ function vistaRadar() {
     ${
       R.items.length
         ? `<div class="rejilla kpis">
-      <div class="kpi"><div class="et">En ${IDIOMAS[idiomaObjetivo()]}</div><div class="val">${enIdioma.length}</div><div class="nota">campañas de clipping con TikTok</div></div>
+      <div class="kpi"><div class="et">Funcionan en España</div><div class="val">${todos.filter((c) => valeEspana(c) && !esAnuncio(c)).length}</div><div class="nota">en español o de música, sin anuncios de productos</div></div>
       <div class="kpi"><div class="et">Joyas</div><div class="val">${joyas.length}</div><div class="nota">60+ de rentabilidad, tu idioma y con tiempo para cobrar</div></div>
       <div class="kpi"><div class="et">Nuevas</div><div class="val">${nuevas.length}</div><div class="nota">desde la lectura anterior</div></div>
       <div class="kpi"><div class="et">Mejor tarifa (${IDIOMAS[idiomaObjetivo()]})</div><div class="val">${enIdioma.length ? Math.max(...enIdioma.map((c) => c.tarifa)).toFixed(2) + " $" : "—"}</div><div class="nota">por cada 1.000 vistas en TikTok</div></div>
@@ -447,8 +460,10 @@ function vistaRadar() {
       <select id="r-cuenta">${opciones(D.cuentas.map((a) => [a.id, "Encaja con " + a.usuario]), f.cuenta, "Cualquier nicho")}</select>
       <select id="r-orden">${opciones([["puntos", "Más rentable (recomendado)"], ["porclip", "Más dinero por clip aprobado"], ["dinero", "Más dinero ha pagado a cada clipper"], ["tarifa", "Mejor tarifa"], ["restante", "Más presupuesto"], ["nuevas", "Más nuevas"], ["fin", "Terminan antes"]], f.orden)}</select>
       <select id="r-veredicto">${opciones([["si", "Renta"], ["duda", "Dudosa"], ["nueva", "Nueva (sin datos)"], ["no", "No renta"], ["sindatos", "Sin datos (Vyro)"]], f.veredicto, "Cualquier veredicto")}</select>
+      <label style="flex-direction:row;align-items:center;gap:6px;color:var(--texto)"><input type="checkbox" id="r-espana" ${f.soloEspana ? "checked" : ""}/> Solo las que funcionan en España</label>
       <label style="flex-direction:row;align-items:center;gap:6px;color:var(--texto)"><input type="checkbox" id="r-joyas" ${f.soloJoyas ? "checked" : ""}/> Solo joyas</label>
     </div>
+    ${f.soloEspana ? `<div class="caja cian peq" style="margin:8px 0">Solo las que <b>funcionan en España</b>: en español o de música, sin pedir público de otro país, sin apuestas, cripto ni política y sin anuncios de productos o apps. Desmarca la casilla para ver todas.</div>` : ""}
     ${f.orden === "dinero" ? `<div class="caja cian peq" style="margin:8px 0">Ordenadas por lo que cada campaña <b>ya ha pagado de media a cada clipper</b> (dato real que publica Whop; Vyro no lo publica). Ojo: es lo que han ganado clippers con cuentas ya hechas. Con cuentas nuevas, mira también <b>«Cobras desde»</b>: las que piden muchas vistas por clip pagan mucho a quien llega, pero a una cuenta nueva le cuesta llegar.</div>` : ""}
     <p class="peq">${lista.length} campañas${R.items.length < (R.total || 0) ? ` (se guardan todas las de tu idioma y las ${RADAR_MAX} mejores del resto)` : ""}.</p>
     <div class="radar-lista">${lista.slice(0, 80).map((c) => tarjetaCampanaRadar(c, nuevo(c))).join("")}</div>
@@ -473,6 +488,7 @@ function vistaRadar() {
   $("#r-cuenta").onchange = (e) => ((f.cuenta = e.target.value), rep());
   $("#r-orden").onchange = (e) => ((f.orden = e.target.value), rep());
   $("#r-joyas").onchange = (e) => ((f.soloJoyas = e.target.checked), rep());
+  $("#r-espana").onchange = (e) => ((f.soloEspana = e.target.checked), rep());
   $("#contenido").querySelectorAll("[data-anadir]").forEach((b) => (b.onclick = () => anadirDesdeRadar(R.items.find((c) => c.id === b.dataset.anadir))));
   $("#contenido").querySelectorAll("[data-informe]").forEach((b) => (b.onclick = () => abrirInforme(b.dataset.informe)));
   $("#r-veredicto") && ($("#r-veredicto").onchange = (e) => ((f.veredicto = e.target.value), rep()));
