@@ -38,23 +38,24 @@ const idiomaObjetivo = () => D.ajustes.idiomaRadar || "es";
 const idiomasCuenta = (a) => (a?.idiomas ? a.idiomas.split(",").map((x) => x.trim()).filter(Boolean) : [idiomaObjetivo()]);
 
 // Desde España, un clip donde hay que entender a alguien (pódcast, entrevista, directo, charla) solo funciona en español (Eduardo, 11/11/2026).
-// En otro idioma solo valen la música (si te gusta el ritmo o el videoclip, te lo quedas viendo) y el gameplay sin voz.
+// En otro idioma solo vale la música (si te gusta el ritmo o el videoclip, te lo quedas viendo). Desde el 11/11/2026 (4.22) tampoco el gameplay:
+// Eduardo quiere las cuentas que no son de música con campañas en español, que es lo que triunfa aquí.
 // Ante la duda se considera hablada: sale del Radar de esa cuenta salvo que tú le asignes la campaña en su ficha.
 const CATS_MUSICA = /^(music|sound campaign|dj & electronic)$/i;
 const MUSICA_TXT = /\b(song|single|track|music video|videoclip|official audio|sound|remix|dj|edm|techno|beat|canci[óo]n)\b/i;
 const SIEMPRE_HABLADA = /podcast|p[óo]dcast|interview|entrevista|lessons?\b|tutorial|clase/i;
 const CATS_HABLADA = /podcast|streamer|personal brand|coaching|education|news|business|finance|comedy|lifestyle|content creator|documentary|health|technology|\bapps?\b/i;
 const HABLADA_TXT = /talk|speech|conversation|commentary|storytime|stream|just chatting|\blives?\b|react|mindset|motivat|coach|mentor|briefing|voice ?over|quote|debate|explain|hablando|documentar|ugc|film yourself/i;
-const GAMEPLAY = /gameplay|fortnite|minecraft|roblox|mobile game|\bgame\b|\bmap\b|island code/i;
 function sinVoz(c) {
   const t = `${c.nombre} ${c.desc || ""}`;
   const cats = c.cats || [];
   if (SIEMPRE_HABLADA.test(t) || cats.some((x) => CATS_HABLADA.test(x))) return false;
   if (cats.some((x) => CATS_MUSICA.test(x)) || MUSICA_TXT.test(t)) return true;
-  return !HABLADA_TXT.test(t) && (GAMEPLAY.test(t) || cats.some((x) => /gaming|fortnite|minecraft|roblox/i.test(x)));
+  return false;
 }
-// El idioma de la campaña vale para la cuenta: el del Radar siempre; otro de su ficha, solo si es música o gameplay sin voz
+// El idioma de la campaña vale para la cuenta: el del Radar siempre; otro de su ficha, solo si es música
 // o si le has asignado tú esa campaña a la cuenta (la has comprobado)
+const PIDE_ESPANOL = /\bspanish (clipping|captions?|copy|version|edition)\b|\b(in|into) spanish\b|en español|en castellano/i;
 const idiomaVale = (c, a) => c.idioma === idiomaObjetivo() || (idiomasCuenta(a).includes(c.idioma) && (sinVoz(c) || (!!a && cuentaAsignada(c)?.id === a.id)));
 
 function clavesCuenta(a) {
@@ -199,7 +200,7 @@ function puntuar(c, cuentaObj) {
   p += v.creciendo ? 10 : v.hundida ? 0 : v.parada ? 3 : 5;
   if (v.creciendo) motivos.push("Sus vistas van a más");
   if (cuentaObj ? idiomaVale(c, cuentaObj) : c.idioma === idiomaObjetivo()) p += 5;
-  if (c.idioma !== idiomaObjetivo() && !sinVoz(c) && !(cuentaObj && cuentaAsignada(c)?.id === cuentaObj.id)) (p -= 20), motivos.push(`Hablada en ${IDIOMAS[c.idioma] || c.idioma}: desde España solo funciona el contenido hablado en español`);
+  if (c.idioma !== idiomaObjetivo() && !sinVoz(c) && !(cuentaObj && cuentaAsignada(c)?.id === cuentaObj.id)) (p -= 20), motivos.push(`En ${(IDIOMAS[c.idioma] || c.idioma).toLowerCase()} y no es de música: desde España solo triunfa en español`);
   if (cuentaObj && (encaje(c, cuentaObj) || cuentaAsignada(c)?.id === cuentaObj.id)) (p += 5), motivos.push(`Para ${cuentaObj.usuario}`);
   if (c.solicitud) p -= 5;
   if (c.bloqueada) p -= 20;
@@ -296,6 +297,8 @@ function procesarRadar(r, silencioso) {
   const antes = R.actualizado;
   R.vistos ||= {};
   r.items.forEach((c) => (R.vistos[c.id] ||= r.actualizado));
+  // Campañas descritas en inglés que piden el texto en español (SEGA «Football Manager 27 Spanish Clipping»): son campañas en español
+  r.items.forEach((c) => c.idioma !== "es" && PIDE_ESPANOL.test(`${c.nombre} ${c.desc || ""}`) && ((c.idioma = "es"), (c.idiomaFuente = "texto")));
   // Se guardan todas las del idioma elegido y, del resto, las mejores (para no hacer pesada la sincronización)
   const evaluados = r.items.map(evaluar).sort((a, b) => b.puntos - a.puntos);
   // Se guardan todas las del idioma del Radar, las de otros idiomas que encajan con cada cuenta (las 30 mejores de cada una,
@@ -494,7 +497,7 @@ function tarjetasPorCuenta(todos) {
   if (!D.cuentas.length)
     return `<div class="tarjeta" style="margin-top:14px">Añade tus cuentas en <b>Cuentas</b> (con su nicho y, si quieres, palabras clave) y aquí verás las mejores campañas para cada una.</div>`;
   return `<h2>Lo mejor para cada cuenta</h2>
-  <p class="peq" style="margin-top:-6px">Ordenado por <b>rentabilidad real</b>: lo que ha cobrado cada clip aprobado, si tus clips llegan al mínimo, cuánto le queda de presupuesto y la competencia. Solo campañas en los idiomas de cada cuenta (en su ficha; en otro idioma que el español, solo música o gameplay sin voz), que pagan en TikTok, sin pedir público de otro país, que no salen como «No renta» y con al menos ${DIAS_MINIMOS} días de dinero.</p>
+  <p class="peq" style="margin-top:-6px">Ordenado por <b>rentabilidad real</b>: lo que ha cobrado cada clip aprobado, si tus clips llegan al mínimo, cuánto le queda de presupuesto y la competencia. Solo campañas en los idiomas de cada cuenta (en su ficha; en otro idioma que el español, solo música), que pagan en TikTok, sin pedir público de otro país, que no salen como «No renta» y con al menos ${DIAS_MINIMOS} días de dinero.</p>
   <div class="rejilla dos">${D.cuentas
     .map((a) => {
       const claves = clavesCuenta(a);
@@ -543,7 +546,7 @@ function tarjetaCampanaRadar(c, esNueva) {
           ${c.solicitud ? `<span class="chip">Hay que solicitarla</span>` : ""}
           ${c.rent && !c.rent.tiktok ? `<span class="chip rosa">No paga en TikTok</span>` : ""}
           ${publicoPais(c) ? `<span class="chip rosa">Pide público de ${publicoPais(c)}</span>` : publicoEspana(c) ? `<span class="chip verde">Público de España</span>` : ""}
-          ${c.idioma !== idiomaObjetivo() && !sinVoz(c) ? `<span class="chip rosa" title="Hay que entender lo que dicen: desde España solo funciona en español">Hablada en ${IDIOMAS[c.idioma] || c.idioma}</span>` : ""}
+          ${c.idioma !== idiomaObjetivo() && !sinVoz(c) ? `<span class="chip rosa" title="No es de música: desde España solo triunfa en español">En ${(IDIOMAS[c.idioma] || c.idioma).toLowerCase()}: no es música</span>` : ""}
           ${dedicada(c) ? `<span class="chip ambar">${dedicada(c) === "si" ? "Exige página dedicada" : "Puede exigir página dedicada"}</span>` : ""}
           ${cuentaAsignada(c) ? `<span class="chip verde">Para ${esc(cuentaAsignada(c).usuario)}</span>` : ""}
           ${c.bloqueada ? `<span class="chip">Bloqueada</span>` : ""}
