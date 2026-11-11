@@ -6,7 +6,7 @@
 const RADAR_MAX = 120; // campañas guardadas (todas las del idioma elegido y las mejores del resto)
 const RADAR_HORAS = 6; // el Mac la actualiza solo si la última lectura tiene más de 6 horas
 const IDIOMAS = { es: "Español", en: "Inglés", pt: "Portugués", fr: "Francés", it: "Italiano", de: "Alemán", nl: "Neerlandés" };
-const RIESGO = /gambl|casino|betting|apuesta|\bbet\b|blackjack|poker|p[óo]quer|roulette|ruleta|slots?\b|tragaperras|sportsbook|crypto|cripto|forex|onlyfans/i;
+const RIESGO = /gambl|casino|betting|apuesta|\bbet\b|blackjack|poker|p[óo]quer|roulette|ruleta|slots?\b|tragaperras|sportsbook|crypto|cripto|coinbase|binance|bitcoin|ethereum|kraken|bybit|\bokx\b|memecoin|blockchain|\bnfts?\b|forex|onlyfans/i;
 // TikTok no deja cobrar por contenido político de marca (Normas de la comunidad, «Integridad de procesos cívicos y electorales»)
 const POLITICA = /politic|polític|elecci|election|anti-élite|\bélites?\b/i;
 

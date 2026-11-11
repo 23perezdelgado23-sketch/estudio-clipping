@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.20";
+const VERSION_APP = "4.21";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
