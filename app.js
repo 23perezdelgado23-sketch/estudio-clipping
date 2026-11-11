@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.25";
+const VERSION_APP = "4.26";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -2054,7 +2054,17 @@ async function importarPerfilesPrivados() {
   // Clips ya cortados fuera de la app (por ejemplo, los que prepara Claude con el mismo motor): entran en Clips con su campaña y su cuenta.
   // Cada uno lleva «importId»: si ya está, no se duplica ni se tocan los cambios que hayas hecho en él.
   (p.clips || []).forEach((x) => {
-    if (!x.importId || D.clips.some((c) => c.importId === x.importId)) return;
+    if (!x.importId) return;
+    // «actualizar»: cambia solo los campos que trae (estado, programación…) de un clip ya importado
+    const ya = D.clips.find((c) => c.importId === x.importId);
+    if (ya) {
+      if (x.actualizar) {
+        const { actualizar, importId, campanaRadarId, ...cambios } = x;
+        Object.assign(ya, cambios);
+        q++;
+      }
+      return;
+    }
     const { campanaRadarId, ...datos } = x;
     const camp = D.campanas.find((k) => k.radarId === campanaRadarId);
     D.clips.push({ id: uid(), autorId: window.nube?.miId?.() || "", estado: "listo", checks: {}, campanaId: camp?.id || "", cuentaId: cuentaDeCampana(camp) || "", ...datos });
