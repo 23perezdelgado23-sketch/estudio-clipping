@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.30";
+const VERSION_APP = "4.31";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -685,18 +685,29 @@ function vistaClips() {
   const lista = D.clips.filter(
     (c) =>
       (!f.texto || (c.titulo + " " + (c.fuente || "") + " " + (c.gancho || "")).toLowerCase().includes(f.texto.toLowerCase())) &&
-      (!f.campana || c.campanaId === f.campana) &&
       (!f.cuenta || c.cuentaId === f.cuenta)
   );
-  $("#contenido").innerHTML = `
-    <div class="filtros">
-      <input id="f-texto" placeholder="Buscar clip…" value="${esc(f.texto)}" />
-      <select id="f-camp">${opciones(D.campanas.map((c) => [c.id, c.nombre]), f.campana, "Todas las campañas")}</select>
-      <select id="f-cuenta">${opciones(D.cuentas.map((c) => [c.id, c.usuario]), f.cuenta, "Todas las cuentas")}</select>
-    </div>
-    <div class="tablero">
+  // Cada campaña va en su propio tablero: primero las activas, luego las que tienen clips; la pestaña elegida enseña solo la suya
+  const orden = { activa: 0, porunirte: 1, pausada: 2, terminada: 3 };
+  const grupos = [...D.campanas]
+    .filter((k) => k.estado === "activa" || D.clips.some((c) => c.campanaId === k.id))
+    .sort((a, b) => (orden[a.estado] ?? 4) - (orden[b.estado] ?? 4))
+    .map((k) => ({ id: k.id, nombre: k.nombre, estado: k.estado }));
+  if (D.clips.some((c) => !campana(c.campanaId))) grupos.push({ id: "-", nombre: "Sin campaña" });
+  if (f.campana && !grupos.some((g) => g.id === f.campana)) f.campana = "";
+  const deGrupo = (g) => lista.filter((c) => (g.id === "-" ? !campana(c.campanaId) : c.campanaId === g.id));
+  // Dentro de cada columna, por día y hora programados (y si no, por el número del título)
+  const clave = (c) => `${c.programadoDia || "9999"} ${c.programadoHora || "99"} ${String(parseInt((c.titulo.match(/\d+/) || ["999"])[0])).padStart(3, "0")}`;
+  const cuando = (c) => {
+    if (!c.programadoDia) return "";
+    const d = new Date(c.programadoDia + "T12:00");
+    const dif = Math.round((d - new Date(hoyISO() + "T12:00")) / 864e5);
+    const dia = dif === 0 ? "Hoy" : dif === 1 ? "Mañana" : d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "numeric" });
+    return `📅 ${dia}${c.programadoHora ? " · " + c.programadoHora : ""}`;
+  };
+  const tablero = (cs0) => `<div class="tablero">
       ${ESTADOS_CLIP.map((e) => {
-        const cs = lista.filter((c) => c.estado === e.id);
+        const cs = cs0.filter((c) => c.estado === e.id).sort((a, b) => clave(a).localeCompare(clave(b)));
         return `<div class="columna" data-estado="${e.id}"><h4><span>${e.nombre}</span><span>${cs.length}</span></h4>
           ${cs
             .map((c) => {
@@ -704,7 +715,7 @@ function vistaClips() {
               const hechos = lista.filter(([k]) => c.checks?.[k]).length;
               return `<div class="clip" draggable="true" data-id="${c.id}">
                 <div class="t">${esc(c.titulo)}</div>
-                <div class="m col"><span>${esc(campana(c.campanaId)?.nombre || "Sin campaña")}</span><span>${esc(cuenta(c.cuentaId)?.usuario || "Sin cuenta")}</span></div>
+                <div class="m col">${cuando(c) && !CUENTAN_VISTAS.includes(c.estado) ? `<span>${cuando(c)}</span>` : ""}<span>${esc(cuenta(c.cuentaId)?.usuario || "Sin cuenta")}</span></div>
                 ${CUENTAN_VISTAS.includes(c.estado) ? `<div class="m"><span>${fmtCorto(c.vistas)} vistas</span><span>${fmtEur(gananciaClip(c))}</span></div>` : ""}
                 <div class="chk">Checklist TikTok ${hechos}/${lista.length}</div>
               </div>`;
@@ -712,7 +723,31 @@ function vistaClips() {
             .join("")}
         </div>`;
       }).join("")}
+    </div>`;
+  const visibles = f.campana ? grupos.filter((g) => g.id === f.campana) : grupos;
+  $("#contenido").innerHTML = `
+    <div class="pestanas">
+      <button data-camp="" class="${f.campana ? "" : "activo"}">Todas, por separado</button>
+      ${grupos.map((g) => `<button data-camp="${g.id}" class="${f.campana === g.id ? "activo" : ""}">${esc(g.nombre.replace(/\s*\(.*\)$/, ""))} · ${deGrupo(g).length}</button>`).join("")}
     </div>
+    <div class="filtros">
+      <input id="f-texto" placeholder="Buscar clip…" value="${esc(f.texto)}" />
+      <select id="f-cuenta">${opciones(D.cuentas.map((c) => [c.id, c.usuario]), f.cuenta, "Todas las cuentas")}</select>
+    </div>
+    ${
+      visibles
+        .map((g) => {
+          const cs = deGrupo(g);
+          const cuentas = [...new Set(cs.map((c) => cuenta(c.cuentaId)?.usuario).filter(Boolean))];
+          return `<div class="grupo-clips">
+            <h3 style="margin:18px 0 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${esc(g.nombre)}
+              ${g.estado && g.estado !== "activa" ? `<span class="chip ambar">${esc(g.estado)}</span>` : ""}
+              <span class="peq" style="font-weight:400">${cs.length} clip${cs.length === 1 ? "" : "s"}${cuentas.length ? " · " + cuentas.map(esc).join(", ") : ""}</span></h3>
+            ${tablero(cs)}
+          </div>`;
+        })
+        .join("") || `<p class="peq">No hay clips todavía.</p>`
+    }
     <p class="peq">${window.estudio.tactil ? "Toca un clip para editarlo y cambiar su estado. Desliza de lado para ver todas las columnas." : "Arrastra un clip a otra columna para cambiar su estado. Haz clic para editarlo."}</p>`;
   $("#f-texto").oninput = (e) => {
     f.texto = e.target.value;
@@ -721,7 +756,7 @@ function vistaClips() {
     $("#f-texto").focus();
     $("#f-texto").setSelectionRange(pos, pos);
   };
-  $("#f-camp").onchange = (e) => ((f.campana = e.target.value), vistaClips());
+  $("#contenido").querySelectorAll("[data-camp]").forEach((b) => (b.onclick = () => ((f.campana = b.dataset.camp), vistaClips())));
   $("#f-cuenta").onchange = (e) => ((f.cuenta = e.target.value), vistaClips());
   $("#contenido").querySelectorAll(".clip").forEach((el) => {
     el.onclick = () => editarClip(D.clips.find((c) => c.id === el.dataset.id));
@@ -2104,6 +2139,10 @@ async function importarPerfilesPrivados() {
     const camp = D.campanas.find((k) => k.radarId === campanaRadarId);
     D.clips.push({ id: uid(), autorId: window.nube?.miId?.() || "", estado: "listo", checks: {}, campanaId: camp?.id || "", cuentaId: cuentaDeCampana(camp) || "", ...datos });
     q++;
+  });
+  // Campañas descartadas cuyos clips se han borrado en esta misma importación: ahora ya pueden salir de Mis campañas
+  Object.entries(p.campanas || {}).forEach(([radarId, datos]) => {
+    if (datos.descartar) D.campanas = D.campanas.filter((x) => x.radarId !== radarId || D.clips.some((c) => c.campanaId === x.id));
   });
   if (!n && !k && !q) return;
   guardar();
