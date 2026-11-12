@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.29";
+const VERSION_APP = "4.30";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -1076,7 +1076,7 @@ function bloqueFabrica() {
     <div class="form" style="margin-top:12px">
       <label class="ancho">Campaña de estos clips<select id="fab-camp">${opciones(D.campanas.filter((c) => c.estado !== "terminada").map((c) => [c.id, c.nombre + (campanaMusica(c) ? " · música" : "")]), o.campanaId, "Sin campaña")}</select></label>
       ${campanaMusica(campanaFabrica()) ? `<div class="caja ancho peq">🎧 <b>Sesión de música:</b> no se transcribe. «Buscar subidones» encuentra los drops del set; cada clip sale <b>sin subtítulos</b>, con el <b>audio original</b> y, si le pones texto, en <b>blanco sin sombra</b> (letra tipo TikTok), como piden sus reglas.</div>` : ""}
-      <label>Formato<select id="fab-modo">${opciones([["inteligente", "Seguir a quien habla (recomendado)"], ["difuminado", "Vídeo entero con fondo difuminado"], ["recorte", "Llenar la pantalla (recorte al centro)"]], o.modo)}</select></label>
+      <label>Formato<select id="fab-modo">${opciones([["inteligente", "Seguir a quien habla (recomendado)"], ["difuminado", "Vídeo entero con fondo difuminado"], ["recorte", "Llenar la pantalla (recorte al centro)"], ["cuadrado", "Cuadrado con franjas negras y el texto arriba (sesiones de música)"]], o.modo)}</select></label>
       <label>Título gancho arriba<select id="fab-titulo">${opciones([["3", "Los 3 primeros segundos"], ["0", "Todo el clip"], ["no", "Sin título"]], o.titulo)}</select></label>
       <label>Subtítulos<select id="fab-subs">${opciones([["1", "Sí, palabra a palabra"], ["0", "Sin subtítulos"]], o.subtitulos ? "1" : "0")}</select></label>
       <label>Color de la palabra que suena<select id="fab-color">${opciones([["#FFE500", "Amarillo"], ["#25F4EE", "Cian"], ["#7CFF6B", "Verde"], ["#FFFFFF", "Blanco (sin resaltar)"]], o.color)}</select></label>
