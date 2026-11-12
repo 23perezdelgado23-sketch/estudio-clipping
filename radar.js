@@ -6,10 +6,15 @@
 const RADAR_MAX = 120; // campañas guardadas (todas las del idioma elegido y las mejores del resto)
 const RADAR_HORAS = 6; // el Mac la actualiza solo si la última lectura tiene más de 6 horas
 const IDIOMAS = { es: "Español", en: "Inglés", pt: "Portugués", fr: "Francés", it: "Italiano", de: "Alemán", nl: "Neerlandés" };
-const RIESGO = /gambl|casino|betting|apuesta|\bbet\b|blackjack|poker|p[óo]quer|roulette|ruleta|slots?\b|tragaperras|sportsbook|crypto|cripto|coinbase|binance|bitcoin|ethereum|kraken|bybit|\bokx\b|memecoin|blockchain|\bnfts?\b|forex|onlyfans/i;
+const RIESGO = /gambl|casino|betting|apuesta|\bbet\b|blackjack|poker|p[óo]quer|roulette|ruleta|slots?\b|tragaperras|sportsbook|crypto|cripto|coinbase|binance|bitcoin|ethereum|kraken|bybit|\bokx\b|memecoin|blockchain|\bnfts?\b|forex|onlyfans|network marketing|multinivel|\bmlm\b/i;
 // TikTok no deja cobrar por contenido político de marca (Normas de la comunidad, «Integridad de procesos cívicos y electorales»)
 const POLITICA = /politic|polític|elecci|election|anti-élite|\bélites?\b/i;
 
+// TikTok tampoco permite promocionar el marketing multinivel (network marketing): está en RIESGO
+// Nichos de un estilo de música concreto: no se les suman las palabras de «música» en general,
+// o la cuenta de techno recibiría cualquier canción (rap, pop, edits de series…) (Eduardo, 12/11/2026)
+const NICHO_ESTILO = /electr[óo]nica|nightlife|pop|indie|cine/i;
+const NICHO_MUSICA = /tendencia|m[úu]sica|meme/i;
 // Palabras que relacionan un nicho con una campaña (se suman a las «palabras clave» de cada cuenta)
 const NICHO_CLAVES = [
   [/negocio|emprend|empresa|business/i, ["business", "negocio", "emprend", "entrepreneur", "ceo", "founder", "fundador", "empresa", "marketing", "ventas", "sales", "coaching", "network marketing"]],
@@ -19,9 +24,9 @@ const NICHO_CLAVES = [
   [/humor|comedia|risa|comedy/i, ["comedy", "comedia", "humor", "funny", "gracios", "risa", "sketch", "prank", "stand-up", "standup"]],
   [/entrevista|true crime|crimen|historia|aventura/i, ["interview", "entrevista", "true crime", "crimen", "crime", "historia", "story", "storytime", "documental", "aventura", "viaj", "travel", "sobreviv", "reto", "challenge", "vlog"]],
   [/marca personal|personal brand|lifestyle|estilo de vida/i, ["personal brand", "marca personal", "lifestyle", "estilo de vida", "motivaci"]],
-  [/tendencia|m[úu]sica|meme/i, ["song", "canción", "cancion", "música", "musica", "music", "sound", "trend", "tendencia", "meme"]],
+  [NICHO_MUSICA, ["song", "canción", "cancion", "música", "musica", "music", "sound", "trend", "tendencia", "meme"]],
   // Estilos de música (desde la 4.18 hay dos cuentas de música): sus palabras deciden a cuál va cada canción
-  [/electr[óo]nica|nightlife/i, ["edm", "house", "techno", "dance", "dj", "electronic", "electrónica", "electronica", "nightlife", "club", "rave", "festival", "trance", "ibiza", "remix", "drop", "drum and bass", "funk"]],
+  [/electr[óo]nica|nightlife/i, ["edm", "house", "techno", "dance", "dj", "electronic", "electrónica", "electronica", "nightlife", "club", "rave", "festival", "trance", "ibiza", "drum and bass", "dj set", "boiler room"]],
   [/pop|indie|cine/i, ["pop", "indie", "rock", "band", "country music", "acoustic", "r&b", "soul", "singer", "movie", "film", "cine", "cinema", "película", "music video", "videoclip", "mv", "anime", "trailer"]],
   [/gaming|videojuego|juego/i, ["gaming", "game", "gameplay", "gamer", "videojuego", "juego", "fortnite", "valorant", "minecraft", "roblox", "call of duty", "warzone", "gta", "league of legends"]],
   [/f[úu]tbol/i, ["football", "fútbol", "futbol", "soccer", "laliga", "la liga", "champions", "fotmob", "matchday", "sports", "deporte", "f1", "nba", "ufc", "mma", "boxing", "boxeo"]],
@@ -69,7 +74,8 @@ const idiomaVale = (c, a) => c.idioma === idiomaObjetivo() || (idiomasCuenta(a).
 
 function clavesCuenta(a) {
   const propias = (a.claves || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
-  const auto = NICHO_CLAVES.filter(([rx]) => rx.test(a.nicho || "")).flatMap(([, k]) => k);
+  const nicho = a.nicho || "";
+  const auto = NICHO_CLAVES.filter(([rx]) => rx.test(nicho) && !(rx === NICHO_MUSICA && NICHO_ESTILO.test(nicho))).flatMap(([, k]) => k);
   return [...new Set([...propias, ...auto])];
 }
 
@@ -79,7 +85,8 @@ function textoCampana(c) {
 
 // Palabras demasiado generales: solas no bastan para decir que una campaña es de un nicho
 // («trending» sale en campañas de streamers y «meme» en las de un cristal de coche); suman medio punto
-const CLAVES_DEBILES = new Set(["trend", "tendencia", "meme", "viral", "sound", "reto", "challenge", "historia", "story", "club", "film", "house", "festival", "deporte"]);
+// «dance», «remix», «drop» y «funk» también salen en vídeos de baile y remixes de rap: solas no hacen una campaña de electrónica
+const CLAVES_DEBILES = new Set(["trend", "tendencia", "meme", "viral", "sound", "reto", "challenge", "historia", "story", "club", "film", "house", "festival", "deporte", "dance", "remix", "drop", "funk"]);
 const escRx = (k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Cuánto encaja la campaña con el nicho de la cuenta: cada palabra clave que aparece al principio de una palabra suma 1
 // (las generales, 0,5). «reto» ya no encaja con «secreto», ni «ceo» con otra palabra. Por debajo de 1 no encaja (0).
@@ -172,6 +179,8 @@ function dedicada(c) {
 }
 
 // La cuenta con la que trabajas una campaña (la que pusiste en su ficha), si la has añadido
+// Campañas que tienes en pausa o terminadas en Mis campañas: no se te vuelven a proponer
+const campanaParada = (c) => ["pausada", "terminada"].includes((D.campanas || []).find((x) => x.radarId === c.id)?.estado);
 const cuentaAsignada = (c) => {
   const k = (D.campanas || []).find((x) => x.radarId === c.id);
   return (k?.cuentaSugerida && D.cuentas.find((a) => a.id === k.cuentaSugerida)) || null;
@@ -520,7 +529,7 @@ function tarjetasPorCuenta(todos) {
       const claves = clavesCuenta(a);
       const vc = vistasCuenta(a);
       const top = todos
-        .filter((c) => recomendable(c, undefined, a) && veredicto(c).tipo !== "no" && (cuentaAsignada(c)?.id === a.id || (encaje(c, a) > 0 && dedicada(c) !== "si" && !cuentaAsignada(c))))
+        .filter((c) => !campanaParada(c) && recomendable(c, undefined, a) && veredicto(c).tipo !== "no" && (cuentaAsignada(c)?.id === a.id || (encaje(c, a) > 0 && dedicada(c) !== "si" && !cuentaAsignada(c))))
         .map((c) => ({ ...c, ...puntuar(c, a) }))
         .sort((x, y) => y.puntos - x.puntos)
         .slice(0, POR_CUENTA);
