@@ -11,7 +11,7 @@ const ESTADOS_CLIP = [
   { id: "enviado", nombre: "Enviado a campaña", color: "rosa" },
   { id: "aprobado", nombre: "Aprobado", color: "verde" },
 ];
-const VERSION_APP = "4.28";
+const VERSION_APP = "4.29";
 const CUENTAN_VISTAS = ["publicado", "enviado", "aprobado"];
 
 const CHECKS_TIKTOK = [
@@ -639,6 +639,7 @@ function editarCampana(c) {
       <label class="ancho">Etiqueta de publicidad que exige<input name="divulgacion" value="${esc(c.divulgacion)}" placeholder="Ej.: #Sponsored o #MarcaAd al principio de la descripción" /></label>
       <label>Cuenta que hay que mencionar<input name="mencion" value="${esc(c.mencion)}" placeholder="@creador (si la campaña lo pide)" /></label>
       <label>Hashtags obligatorios<input name="hashtagsObl" value="${esc(c.hashtagsObl)}" placeholder="#marca #campaña" /></label>
+      <label>Tipo de contenido<select name="contenido">${opciones([["", "Hablado (pódcast, entrevista, vlog…)"], ["musica", "Música (sesiones, DJ sets, canciones)"]], c.contenido || "")}</select></label>
       <label>Duración mínima del clip (s)<input name="durMin" type="number" min="0" value="${esc(c.durMin)}" /></label>
       <label>Duración máxima del clip (s)<input name="durMax" type="number" min="0" value="${esc(c.durMax)}" /></label>
       <label class="ancho">Reglas de la campaña<textarea name="reglas" placeholder="Duración, menciones, hashtags obligatorios, qué está prohibido…">${esc(c.reglas)}</textarea></label>
@@ -923,6 +924,7 @@ function vistaMesa() {
         </div>
         <p class="teclas" style="margin-top:12px"><kbd>Espacio</kbd> reproducir · <kbd>J</kbd>/<kbd>L</kbd> −5 s / +5 s · <kbd>←</kbd>/<kbd>→</kbd> −1 s / +1 s · <kbd>I</kbd> entrada · <kbd>O</kbd> salida · <kbd>M</kbd> guardar</p>
         <label style="margin-top:6px">Nota del momento (qué pasa, posible gancho)<input id="nota-corte" placeholder="Ej.: se ríe de la pregunta y suelta la frase" /></label>
+        ${campanaMusica(campanaFabrica()) ? `<label style="margin-top:6px">Texto en pantalla (opcional, en el idioma de la campaña)<input id="texto-corte" placeholder="Ej.: Every Restricted set feels illegal" /></label>` : ""}
         <h2>Momentos marcados en este vídeo</h2>
         ${
           cortes.length
@@ -983,7 +985,7 @@ function vistaMesa() {
   };
   const guardarCorte = () => {
     if (mesa.entrada == null || mesa.salida == null) return aviso("Marca entrada (I) y salida (O)");
-    D.cortes.push({ id: uid(), ruta: mesa.video.ruta, inicio: mesa.entrada, fin: mesa.salida, nota: $("#nota-corte").value.trim() });
+    D.cortes.push({ id: uid(), ruta: mesa.video.ruta, inicio: mesa.entrada, fin: mesa.salida, nota: $("#nota-corte").value.trim(), texto: $("#texto-corte")?.value.trim() || "" });
     mesa.entrada = mesa.salida = null;
     guardar();
     vistaMesa();
@@ -1013,7 +1015,7 @@ function vistaMesa() {
     (b) =>
       (b.onclick = () => {
         const c = D.cortes.find((x) => x.id === b.dataset.cortarCorte);
-        cortarEnVertical({ inicio: c.inicio, fin: c.fin, titulo: c.nota || `Momento ${aTiempo(c.inicio)}`, notas: c.nota, exacto: true });
+        cortarEnVertical({ inicio: c.inicio, fin: c.fin, titulo: c.nota || `Momento ${aTiempo(c.inicio)}`, notas: c.nota, exacto: true, ...(campanaMusica(campanaFabrica()) ? { textoArriba: c.texto || "" } : {}) });
       })
   );
   $("#b-copiar") &&
@@ -1051,8 +1053,12 @@ const opcFabrica = () => {
   o.subtitulos ??= true;
   o.color ||= "#FFE500";
   o.titulo ||= "3";
+  o.campanaId ??= "";
   return o;
 };
+// Campaña de música (sesiones, DJ sets): sin transcripción ni subtítulos; los momentos son los subidones del audio
+const campanaMusica = (k) => k?.contenido === "musica";
+const campanaFabrica = () => campana(opcFabrica().campanaId);
 window.fabricaLista = () => !!(window.estudio.fabrica && mesa.video && fabrica.estado?.disponible);
 
 // Texto con tiempos para la IA (una línea por frase: «m:ss texto»)
@@ -1068,6 +1074,8 @@ function bloqueFabrica() {
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="fab-lotes">📚 Varios vídeos de golpe…</button><span class="peq">Transcribe, busca y corta varios vídeos seguidos (por ejemplo, por la noche), con las opciones de «Buscar momentos» de abajo.</span></div>
     <div id="fab-lista-lotes"></div>
     <div class="form" style="margin-top:12px">
+      <label class="ancho">Campaña de estos clips<select id="fab-camp">${opciones(D.campanas.filter((c) => c.estado !== "terminada").map((c) => [c.id, c.nombre + (campanaMusica(c) ? " · música" : "")]), o.campanaId, "Sin campaña")}</select></label>
+      ${campanaMusica(campanaFabrica()) ? `<div class="caja ancho peq">🎧 <b>Sesión de música:</b> no se transcribe. «Buscar subidones» encuentra los drops del set; cada clip sale <b>sin subtítulos</b>, con el <b>audio original</b> y, si le pones texto, en <b>blanco sin sombra</b> (letra tipo TikTok), como piden sus reglas.</div>` : ""}
       <label>Formato<select id="fab-modo">${opciones([["inteligente", "Seguir a quien habla (recomendado)"], ["difuminado", "Vídeo entero con fondo difuminado"], ["recorte", "Llenar la pantalla (recorte al centro)"]], o.modo)}</select></label>
       <label>Título gancho arriba<select id="fab-titulo">${opciones([["3", "Los 3 primeros segundos"], ["0", "Todo el clip"], ["no", "Sin título"]], o.titulo)}</select></label>
       <label>Subtítulos<select id="fab-subs">${opciones([["1", "Sí, palabra a palabra"], ["0", "Sin subtítulos"]], o.subtitulos ? "1" : "0")}</select></label>
@@ -1099,6 +1107,7 @@ async function montarFabrica() {
   if (!F || !paso) return;
   const o = opcFabrica();
   $("#fab-modo").onchange = (e) => ((o.modo = e.target.value), guardar());
+  $("#fab-camp").onchange = (e) => ((o.campanaId = e.target.value), guardar(), vistaMesa());
   $("#fab-subs").onchange = (e) => ((o.subtitulos = e.target.value === "1"), guardar());
   $("#fab-color").onchange = (e) => ((o.color = e.target.value), guardar());
   $("#fab-titulo").onchange = (e) => ((o.titulo = e.target.value), guardar());
@@ -1111,7 +1120,7 @@ async function montarFabrica() {
       return;
     }
     const el = document.getElementById("fab-progreso");
-    if (el) el.textContent = d.fase === "modelo" ? (d.pct === "comprobando" ? "Comprobando el archivo…" : `Descargando el motor… ${d.pct} %`) : d.fase === "audio" ? "Preparando el audio…" : `Transcribiendo… ${d.pct} %`;
+    if (el) el.textContent = d.fase === "subidones" ? `Analizando el volumen del set… ${d.pct} %` : d.fase === "modelo" ? (d.pct === "comprobando" ? "Comprobando el archivo…" : `Descargando el motor… ${d.pct} %`) : d.fase === "audio" ? "Preparando el audio…" : `Transcribiendo… ${d.pct} %`;
   });
   fabrica.estado = await F.estado();
   const ruta = mesa.video?.ruta;
@@ -1130,6 +1139,8 @@ async function montarFabrica() {
       return (paso.innerHTML = `<b>Primer uso:</b> hay que descargar el motor de transcripción (${e.modeloMB} MB, una sola vez; después funciona sin internet).<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn prim" id="fab-bajar">Descargar el motor</button><span id="fab-progreso"></span></div>`);
     const todo = `<button class="btn prim" id="fab-todo" title="Transcribe, busca los mejores momentos con IA y los corta en vertical">🚀 Hacerlo todo</button>`;
     if (!ruta) return (paso.innerHTML = "Abre un vídeo para transcribirlo y cortarlo aquí, o usa «Varios vídeos de golpe».");
+    if (campanaMusica(campanaFabrica()))
+      return (paso.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn prim" id="fab-subidones">🎚️ Buscar subidones</button><span id="fab-progreso" class="peq">Analiza el volumen de todo el set y marca los drops más fuertes como momentos (arriba, en «Momentos marcados»).</span></div>`);
     if (mesa.transcripcion?.ruta !== ruta)
       return (paso.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${todo}<button class="btn" id="fab-transcribir">Solo transcribir</button><span id="fab-progreso" class="peq">${mesa.duracion ? (mesa.duracion / 14 < 60 ? "Tardará menos de un minuto" : `Tardará unos ${Math.round(mesa.duracion / 14 / 60)} minutos`) : ""}</span></div>`);
     const t = mesa.transcripcion;
@@ -1150,7 +1161,21 @@ async function montarFabrica() {
     if (!b) return;
     b.disabled = true;
     try {
-      if (b.id === "fab-bajar") {
+      if (b.id === "fab-subidones") {
+        const k = campanaFabrica();
+        const dur = n(k?.durMin) || 15;
+        const lista = await F.subidones(ruta, { dur, cuantos: 10 });
+        if (!lista.length) throw new Error("No se han encontrado subidones claros en este vídeo");
+        const ya = D.cortes.filter((c) => c.ruta === ruta);
+        lista.forEach((x) => {
+          if (ya.some((c) => Math.abs(c.inicio - x.inicio) < 5)) return;
+          D.cortes.push({ id: uid(), ruta, inicio: x.inicio, fin: x.fin, nota: `Subidón en ${aTiempo(x.t)} (+${x.subida} dB)`, texto: "" });
+        });
+        guardar();
+        aviso(`${lista.length} subidones marcados: revísalos y corta los mejores`);
+        if (seccion === "mesa" && mesa.video?.ruta === ruta) vistaMesa();
+        return;
+      } else if (b.id === "fab-bajar") {
         fabrica.estado = await F.descargarModelo();
         aviso("Motor de transcripción listo");
       } else if (b.id === "fab-todo") {
@@ -1242,7 +1267,9 @@ function cortarEnVertical(m, ctx) {
   let { inicio, fin } = m;
   if (!(fin > inicio)) return aviso("Ese momento no tiene un tramo válido");
   if (trans && !m.exacto) ({ inicio, fin } = ajustarAPalabras(inicio, fin, trans.palabras));
-  const camp = campana(m.campanaId);
+  const camp = campana(m.campanaId) || campanaFabrica();
+  if (camp && !m.campanaId) m = { ...m, campanaId: camp.id };
+  const musica = campanaMusica(camp);
   // Duración de la campaña: si se queda corto, se alarga hasta la siguiente palabra que llegue al mínimo; si se pasa, se recorta en la última palabra que quepa
   if (trans && camp && !m.exacto) {
     const min = n(camp.durMin), max = n(camp.durMax);
@@ -1257,7 +1284,7 @@ function cortarEnVertical(m, ctx) {
   }
   const dur = fin - inicio;
   const avisoDur = camp && n(camp.durMin) && dur < n(camp.durMin) ? `Dura ${Math.round(dur)} s y la campaña pide mínimo ${n(camp.durMin)} s` : camp && n(camp.durMax) && dur > n(camp.durMax) ? `Dura ${Math.round(dur)} s y la campaña pide máximo ${n(camp.durMax)} s` : "";
-  const t = { id: uid(), ruta, inicio, fin, titulo: m.titulo || `Momento ${aTiempo(inicio)}`, estado: "cola", pct: 0, aviso: avisoDur || (o.subtitulos && !trans ? "Sin subtítulos: transcribe el vídeo primero para tenerlos" : "") };
+  const t = { id: uid(), ruta, inicio, fin, titulo: m.titulo || `Momento ${aTiempo(inicio)}`, estado: "cola", pct: 0, aviso: avisoDur || (o.subtitulos && !trans && !musica ? "Sin subtítulos: transcribe el vídeo primero para tenerlos" : "") };
   fabrica.trabajos.unshift(t);
   pintarTrabajos();
   // Uno detrás de otro, para no saturar el Mac
@@ -1273,15 +1300,17 @@ function cortarEnVertical(m, ctx) {
         titulo: t.titulo,
         fuente: ruta.split("/").pop().replace(/\.[^.]+$/, ""),
         modo: o.modo,
-        subtitulos: o.subtitulos && !!trans,
+        subtitulos: !musica && o.subtitulos && !!trans,
+        estiloTexto: musica ? "tiktok" : "",
         color: o.color,
         palabras: trans ? trans.palabras : [],
-        textoArriba: o.titulo === "no" ? "" : m.textoArriba || m.titulo || "",
+        // En música solo hay texto si se lo pones tú (la nota del momento no es un texto para el público)
+        textoArriba: o.titulo === "no" ? "" : musica ? m.textoArriba || "" : m.textoArriba || m.titulo || "",
         tituloSegundos: o.titulo === "0" ? 0 : 3.5,
       });
       t.salida = r.salida;
       if (r.aviso) t.aviso = [t.aviso, r.aviso].filter(Boolean).join(" · ");
-      const clip = { id: uid(), autorId: window.nube?.miId?.() || "", estado: "listo", checks: {}, cuentaId: cuentaDeCampana(camp) || (D.cuentas.length === 1 ? D.cuentas[0].id : ""), campanaId: m.campanaId || "", titulo: t.titulo, fuente: ruta.split("/").pop(), inicio: aTiempo(inicio), fin: aTiempo(fin), duracion: Math.round(dur), gancho: m.gancho || "", textoArriba: o.titulo === "no" ? "" : m.textoArriba || "", descripcion: m.descripcion || "", hashtags: m.hashtags || "", notas: [m.notas, `Vídeo: ${t.salida}`].filter(Boolean).join("\n"), archivo: t.salida };
+      const clip = { id: uid(), autorId: window.nube?.miId?.() || "", estado: "listo", checks: {}, cuentaId: cuentaDeCampana(camp) || (D.cuentas.length === 1 ? D.cuentas[0].id : ""), campanaId: m.campanaId || "", titulo: t.titulo, fuente: ruta.split("/").pop(), inicio: aTiempo(inicio), fin: aTiempo(fin), duracion: Math.round(dur), gancho: m.gancho || "", textoArriba: o.titulo === "no" ? "" : m.textoArriba || "", descripcion: m.descripcion || (musica ? [camp.divulgacion, m.textoArriba, camp.mencion].filter(Boolean).join(" ") : ""), hashtags: m.hashtags || "", notas: [m.notas, `Vídeo: ${t.salida}`].filter(Boolean).join("\n"), archivo: t.salida };
       D.clips.push(clip);
       guardar();
       t.clipId = clip.id;
